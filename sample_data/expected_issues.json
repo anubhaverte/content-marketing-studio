@@ -1,0 +1,43 @@
+{
+  "total_rows": 250,
+  "very_long_names": 12,
+  "single_word_names": 8,
+  "very_short_names": 6,
+  "accented_names": 10,
+  "messy_whitespace_or_case": 15,
+  "unknown_roles": 10,
+  "duplicate_id_rows": 10,
+  "missing_photo": 50,
+  "missing_team": 15,
+  "missing_id": 10,
+  "special_photos": {
+    "tiny": [
+      "photo_0130.jpg",
+      "photo_0092.jpg",
+      "photo_0186.jpg",
+      "photo_0170.jpg",
+      "photo_0001.jpg"
+    ],
+    "blurred": [
+      "photo_0041.jpg",
+      "photo_0035.jpg",
+      "photo_0152.jpg",
+      "photo_0032.jpg",
+      "photo_0010.jpg"
+    ],
+    "huge": [
+      "photo_0052.jpg",
+      "photo_0068.jpg",
+      "photo_0229.jpg",
+      "photo_0243.jpg",
+      "photo_0046.jpg"
+    ],
+    "wrong_aspect": [
+      "photo_0043.jpg",
+      "photo_0004.jpg",
+      "photo_0167.jpg",
+      "photo_0073.jpg",
+      "photo_0071.jpg"
+    ]
+  }
+}
