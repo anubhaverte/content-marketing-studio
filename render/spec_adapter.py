@@ -112,6 +112,32 @@ def person_value(person: Person, field: str) -> str | None:
     return value
 
 
+def person_id(person: Person) -> str | None:
+    """Return a person's optional identifier without exposing the source JSON shape."""
+    return person_value(person, "id")
+
+
+def person_photo_path(person: Person) -> Path | None:
+    """Resolve the optional sample photo under the people-data directory."""
+    photo = person_value(person, "photo")
+    if not photo:
+        return None
+    source = Path(person._source_file).resolve() if person._source_file else PEOPLE_PATH.resolve()
+    data_root = source.parent.resolve()
+    path = (data_root / photo).resolve()
+    if path != data_root and data_root not in path.parents:
+        raise ValueError(f"Person photo path must remain under {data_root}: {photo}")
+    return path
+
+
+def attendance_url_base(spec: DesignSpec) -> str | None:
+    """Return the optional attendance URL prefix from the temporary spec."""
+    value = spec._data.get("attendance_url_base")
+    if value is not None and not isinstance(value, str):
+        raise ValueError("Design Spec field 'attendance_url_base' must be a string or null")
+    return value
+
+
 def person_role(person: Person) -> str:
     """Return and validate a person's role."""
     source = person._source_file or "person data"

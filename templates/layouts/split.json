@@ -44,6 +44,8 @@
       "size": { "width": 38, "height": 9 },
       "color": "primary",
       "font_size": 3.4,
+      "min_font_size": 2.8,
+      "max_lines": 2,
       "weight": "700",
       "alignment": "middle",
       "max_width": 38
@@ -53,7 +55,9 @@
       "type": "rect",
       "position": { "x": 19, "y": 31 },
       "size": { "width": 22, "height": 22 },
-      "color": "accent"
+      "color": "accent",
+      "shape": "rounded_rect",
+      "radius": 2
     },
     {
       "id": "person-photo",
@@ -67,12 +71,23 @@
       "type": "text",
       "data": "person.name",
       "position": { "x": 34, "y": 63 },
-      "size": { "width": 23, "height": 9 },
+      "size": { "width": 23, "height": 10 },
       "color": "text",
       "font_size": 4.6,
+      "min_font_size": 2.8,
+      "max_lines": 2,
       "weight": "700",
       "alignment": "middle",
       "max_width": 23
+    },
+    {
+      "id": "attendance-qr",
+      "type": "qr",
+      "position": { "x": 44, "y": 36 },
+      "size": { "width": 12, "height": 12 },
+      "qr_size_mm": 12,
+      "color": "text",
+      "data": "attendance"
     },
     {
       "id": "role-band",

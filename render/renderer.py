@@ -11,6 +11,9 @@ from xml.sax.saxutils import escape
 
 from render import spec_adapter
 from render.loaders import LAYOUTS_DIR, THEMES_DIR, load_layout, load_theme
+from render.photo import initials, initials_markup, photo_markup
+from render.qr import qr_markup
+from render.text_fit import find_font_file, fit_text
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -30,10 +33,6 @@ ROLE_CUES = {
     "mentor": "triangle",
     "volunteer": "diamond",
 }
-NAME_LONG_THRESHOLD = 15
-NAME_GLYPH_WIDTH_FACTOR = 1.05
-
-
 def render_card(
     spec: spec_adapter.DesignSpec,
     person: spec_adapter.Person,
@@ -83,7 +82,8 @@ def _render(
         raise ValueError(f"Theme {theme_file} must give roles clearly different colors")
     if not isinstance(fonts, dict):
         raise ValueError(f"Theme fonts must be an object in {theme_file}")
-    family = _font_family(fonts, theme_file)
+    font_families = _font_families(fonts, theme_file)
+    selected_family, font_path = find_font_file(font_families)
     width, height, trim_x, trim_y, trim_width, trim_height = spec_adapter.canvas_geometry(spec)
     safe = spec_adapter.safe_inset(spec)
     elements = layout.get("elements")
@@ -99,7 +99,9 @@ def _render(
         "theme": theme,
         "colors": colors,
         "role_color": role_colors[role],
-        "family": family,
+        "family": f'"{selected_family}"',
+        "font_families": font_families,
+        "font_path": font_path,
         "requested_logos": requested_logos,
         "layout_file": layout_file,
         "theme_file": theme_file,
@@ -121,6 +123,7 @@ def _render(
             "logo": _render_logo,
             "photo": _render_photo,
             "image": _render_image,
+            "qr": _render_qr,
         }.get(element_type)
         if renderer is None:
             raise ValueError(f"Unknown layout element type {element_type!r} in {layout_file}")
@@ -163,7 +166,7 @@ def _render_rect(element: dict[str, Any], context: dict[str, Any]) -> str:
 
 def _render_text(element: dict[str, Any], context: dict[str, Any]) -> str:
     """Render escaped text from a normalized event or person value."""
-    x, y, width, _ = _geometry(element, context["layout_file"])
+    x, y, width, height = _geometry(element, context["layout_file"])
     field = element.get("data")
     value = _data_value(str(field), context)
     if value is None or not value.strip():
@@ -177,20 +180,40 @@ def _render_text(element: dict[str, Any], context: dict[str, Any]) -> str:
             value = f"{str(field).rsplit('.', 1)[-1].replace('_', ' ').upper()} NOT PROVIDED"
             warnings.warn(f"Data for {field!r} is missing; drew a visible fallback")
     font_size = _positive_layout_number(element, "font_size", context["layout_file"])
-    if field == "person.name" and len(value) > NAME_LONG_THRESHOLD:
-        # TODO Phase 3: replace this Phase 1 character-count estimate with measured text fitting.
-        max_width = min(width, _positive_layout_number(element, "max_width", context["layout_file"]))
-        font_size = min(font_size, max_width / (len(value) * NAME_GLYPH_WIDTH_FACTOR))
     weight = element.get("weight", "400")
     alignment = element.get("alignment", "start")
     if alignment not in {"start", "middle", "end"}:
         raise ValueError(f"Unknown text alignment {alignment!r} in {context['layout_file']}")
+    min_font_size = _positive_layout_number(element, "min_font_size", context["layout_file"])
+    max_width = min(width, _positive_layout_number(element, "max_width", context["layout_file"]))
+    max_lines = _positive_layout_integer(element, "max_lines", context["layout_file"])
+    font_family, font_path = find_font_file(context["font_families"], str(weight))
+    line_capacity = max(1, int(height / (min_font_size * 1.2)))
+    result = fit_text(
+        value,
+        font_path=font_path,
+        font_size=font_size,
+        min_font_size=min_font_size,
+        max_width=max_width,
+        max_lines=min(max_lines, line_capacity),
+    )
     color = _element_color(element, context)
+    left = x - max_width / 2 if alignment == "middle" else (x - max_width if alignment == "end" else x)
+    clip_id = f"{element.get('id', 'text')}-clip"
+    line_height = result.font_size * 1.2
+    first_baseline = y - (len(result.lines) - 1) * line_height / 2
+    tspans = "".join(
+        f'<tspan x="{_num(x)}" y="{_num(first_baseline + index * line_height)}">{_text(line)}</tspan>'
+        for index, line in enumerate(result.lines)
+    )
     return (
-        f'<text id="{_attr(element.get("id", "text"))}" x="{_num(x)}" y="{_num(y)}" '
-        f'text-anchor="{alignment}" font-family="{_attr(context["family"])}" '
-        f'font-size="{_num(font_size)}" font-weight="{_attr(weight)}" '
-        f'fill="{_attr(color)}">{_text(value)}</text>'
+        f'<defs><clipPath id="{_attr(clip_id)}"><rect x="{_num(left)}" '
+        f'y="{_num(y - height / 2)}" width="{_num(max_width)}" height="{_num(height)}"/></clipPath></defs>'
+        f'<text id="{_attr(element.get("id", "text"))}" data-shortened="{str(result.shortened).lower()}" '
+        f'x="{_num(x)}" y="{_num(first_baseline)}" text-anchor="{alignment}" '
+        f'font-family="{_attr(font_family)}" font-size="{_num(result.font_size)}" '
+        f'font-weight="{_attr(weight)}" fill="{_attr(color)}" clip-path="url(#{_attr(clip_id)})">'
+        f'{tspans}</text>'
     )
 
 
@@ -229,17 +252,54 @@ def _render_logo(element: dict[str, Any], context: dict[str, Any]) -> str:
 
 
 def _render_photo(element: dict[str, Any], context: dict[str, Any]) -> str:
-    """Embed an available photo proportionally or draw a warned placeholder."""
+    """Embed a centered, clipped photo or show initials for unavailable data."""
     x, y, width, height = _geometry(element, context["layout_file"])
-    photo = spec_adapter.person_value(context["person"], "photo")
-    if photo:
-        path = (ASSETS_DIR / photo).resolve()
-        if path.is_file() and path.parent == ASSETS_DIR.resolve():
-            return _image_markup(path, "person-photo", x, y, width, height)
-        warnings.warn(f"Person photo was not found under assets/: {photo}")
+    photo_path = spec_adapter.person_photo_path(context["person"])
+    shape = element.get("shape", "circle")
+    if shape not in {"circle", "rounded_rect"}:
+        raise ValueError(f"Unknown photo shape {shape!r} in {context['layout_file']}")
+    radius = float(element.get("radius", min(width, height) * 0.12))
+    if photo_path is not None:
+        try:
+            if photo_path.is_file():
+                markup, _ = photo_markup(
+                    photo_path, element_id="person-photo", x=x, y=y, width=width, height=height,
+                    shape=shape, radius=radius,
+                )
+                return markup
+            warnings.warn(f"Person photo was not found: {photo_path}")
+        except (OSError, ValueError) as error:
+            warnings.warn(f"Person photo cannot be read ({photo_path}): {error}")
     else:
-        warnings.warn("Person photo is missing; drew a PHOTO placeholder")
-    return _missing_asset_markup("person-photo", "PHOTO", x, y, width, height)
+        warnings.warn("Person photo is missing; drew an initials fallback")
+    name = spec_adapter.person_value(context["person"], "name")
+    return initials_markup(
+        element_id="person-photo", label=initials(name), x=x, y=y, width=width,
+        height=height, shape=shape, radius=radius,
+        color=_element_color(element, context),
+    )
+
+
+def _render_qr(element: dict[str, Any], context: dict[str, Any]) -> str:
+    """Render an attendance QR only when its real URL prefix and person ID exist."""
+    base_url = spec_adapter.attendance_url_base(context["spec"])
+    if base_url is None:
+        warnings.warn("attendance_url_base is null; skipped QR code")
+        return ""
+    person_id = spec_adapter.person_id(context["person"])
+    if not person_id:
+        warnings.warn("Person ID is missing; skipped attendance QR code")
+        return ""
+    x, y, width, height = _geometry(element, context["layout_file"])
+    size = _positive_layout_number(element, "qr_size_mm", context["layout_file"])
+    if size < 12 or size > width or size > height:
+        raise ValueError(f"QR size must be at least 12 mm and fit its layout box in {context['layout_file']}")
+    color = _element_color(element, context)
+    background = _theme_color(context["colors"], "background", context["theme_file"])
+    return qr_markup(
+        base_url + person_id, element_id=_attr(element.get("id", "qr")), x=x, y=y,
+        size=size, color=color, background=background,
+    )
 
 
 def _render_image(element: dict[str, Any], context: dict[str, Any]) -> str:
@@ -320,16 +380,15 @@ def _theme_color(colors: dict[str, Any], name: str, theme_file: str) -> str:
     return value
 
 
-def _font_family(fonts: dict[str, Any], theme_file: str) -> str:
-    """Select the first configured heading font and retain CSS fallbacks."""
+def _font_families(fonts: dict[str, Any], theme_file: str) -> list[str]:
+    """Return configured heading and body font families in fallback order."""
     heading = fonts.get("heading")
     if not isinstance(heading, list) or not heading or not all(isinstance(item, str) for item in heading):
         raise ValueError(f"Theme heading fonts must be a non-empty string array in {theme_file}")
     body = fonts.get("body", [])
     if not isinstance(body, list) or not all(isinstance(item, str) for item in body):
         raise ValueError(f"Theme body fonts must be a string array in {theme_file}")
-    families = heading + body + ["sans-serif"]
-    return ", ".join(f'"{family}"' for family in families)
+    return heading + body
 
 
 def _geometry(element: dict[str, Any], layout_file: str) -> tuple[float, float, float, float]:
@@ -354,6 +413,14 @@ def _positive_layout_number(data: dict[str, Any], field: str, layout_file: str) 
     value = _layout_number(data, field, layout_file)
     if value <= 0:
         raise ValueError(f"Layout value {field!r} must be greater than zero in {layout_file}")
+    return value
+
+
+def _positive_layout_integer(data: dict[str, Any], field: str, layout_file: str) -> int:
+    """Read a positive integer layout value."""
+    value = data.get(field)
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError(f"Layout value {field!r} must be a positive integer in {layout_file}")
     return value
 
 

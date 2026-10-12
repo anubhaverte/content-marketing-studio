@@ -33,12 +33,24 @@ def main() -> int:
     classic = spec_adapter.with_choices(spec, layout="classic", theme="blue")
     split = spec_adapter.with_choices(spec, layout="split", theme="dark")
     classic_svgs = [render_card(classic, person) for person in people]
-    results.append(report("1. Six people render with classic + blue", len(classic_svgs) == 6,
+    results.append(report("1. All sample people render with classic + blue", len(classic_svgs) == len(people),
                           f"rendered {len(classic_svgs)} SVGs"))
     split_svgs = [render_card(split, person) for person in people]
-    differs = len(split_svgs) == 6 and all(left != right for left, right in zip(classic_svgs, split_svgs))
+    matched_people = [
+        spec_adapter.person_value(person, "name") or f"person {index}"
+        for index, (person, classic_svg, split_svg) in enumerate(
+            zip(people, classic_svgs, split_svgs), start=1
+        )
+        if classic_svg == split_svg
+    ]
+    differs = (
+        len(classic_svgs) == len(people)
+        and len(split_svgs) == len(people)
+        and not matched_people
+    )
     results.append(report("2. Split + dark changes each rendered SVG", differs,
-                          "all corresponding SVG strings differ" if differs else "one or more SVG strings match"))
+                          f"all {len(people)} corresponding people differ" if differs
+                          else f"matching SVGs: {', '.join(matched_people) if matched_people else 'rendered SVG count did not match people count'}"))
 
     color_change_passed = False
     with tempfile.TemporaryDirectory(prefix="phase2-theme-") as temp_directory:
