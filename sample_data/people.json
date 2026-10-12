@@ -1,0 +1,8 @@
+[
+  { "name": "Sample Participant One", "role": "participant" },
+  { "name": "Sample Participant Two", "role": "participant" },
+  { "name": "Sample Organizer", "role": "organizer" },
+  { "name": "Sample Mentor", "role": "mentor" },
+  { "name": "Sample Volunteer One", "role": "volunteer" },
+  { "name": "Sample Volunteer Two", "role": "volunteer" }
+]
