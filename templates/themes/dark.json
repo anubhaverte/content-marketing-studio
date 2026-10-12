@@ -10,10 +10,10 @@
     "accent": "#475569"
   },
   "role_colors": {
-    "participant": "#38BDF8",
-    "organizer": "#FB7185",
-    "mentor": "#A3E635",
-    "volunteer": "#C084FC"
+    "participant": "#0369A1",
+    "organizer": "#BE123C",
+    "mentor": "#4D7C0F",
+    "volunteer": "#7E22CE"
   },
   "fonts": {
     "heading": ["Segoe UI", "Arial"],

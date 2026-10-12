@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import re
 from pathlib import Path
 from typing import Literal
 from xml.sax.saxutils import escape
@@ -11,6 +12,27 @@ from PIL import Image
 
 
 PhotoShape = Literal["circle", "rounded_rect"]
+
+
+def best_contrast_text_color(background: str, colors: dict[str, str]) -> tuple[str, str]:
+    """Select the higher-contrast theme text color for an initials fallback."""
+    candidates = {
+        name: colors.get(name)
+        for name in ("text", "text_on_primary")
+    }
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", background):
+        raise ValueError(f"Initials background must be a six-digit theme color: {background!r}")
+    if any(not isinstance(value, str) or not re.fullmatch(r"#[0-9A-Fa-f]{6}", value) for value in candidates.values()):
+        raise ValueError("Theme must define valid 'text' and 'text_on_primary' colors")
+    name, color = max(
+        candidates.items(),
+        key=lambda item: _contrast_ratio(background, item[1]),
+    )
+    if _contrast_ratio(background, color) < 4.5:
+        raise ValueError(
+            f"Neither theme text color has 4.5:1 contrast with initials background {background}"
+        )
+    return name, color
 
 
 def photo_markup(
@@ -76,6 +98,8 @@ def initials_markup(
     shape: PhotoShape,
     radius: float,
     color: str,
+    text_color: str,
+    text_color_name: str,
 ) -> str:
     """Draw initials in a photo-shaped fallback area."""
     outline = (
@@ -88,7 +112,22 @@ def initials_markup(
         f'<defs><clipPath id="{escape(element_id)}-fallback-clip">{outline}</clipPath></defs>'
         f'<rect x="{x:g}" y="{y:g}" width="{width:g}" height="{height:g}" fill="{color}" '
         f'clip-path="url(#{escape(element_id)}-fallback-clip)"/>'
-        f'<text x="{x + width / 2:g}" y="{y + height / 2:g}" text-anchor="middle" '
+        f'<text id="{escape(element_id)}-initials" data-theme-color="{escape(text_color_name)}" '
+        f'x="{x + width / 2:g}" y="{y + height / 2:g}" text-anchor="middle" '
         f'dominant-baseline="middle" font-size="{min(width, height) * 0.28:g}" '
-        f'font-weight="700" fill="#FFFFFF">{escape(label)}</text></g>'
+        f'font-weight="700" fill="{escape(text_color)}">{escape(label)}</text></g>'
     )
+
+
+def _contrast_ratio(first: str, second: str) -> float:
+    """Return WCAG contrast for two six-digit RGB colors."""
+    def luminance(color: str) -> float:
+        channels = [int(color[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+        linear = [
+            value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+            for value in channels
+        ]
+        return sum(value * weight for value, weight in zip(linear, (0.2126, 0.7152, 0.0722)))
+
+    light, dark = sorted((luminance(first), luminance(second)), reverse=True)
+    return (light + 0.05) / (dark + 0.05)

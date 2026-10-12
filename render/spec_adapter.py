@@ -93,6 +93,14 @@ def safe_inset(spec: DesignSpec) -> float:
     return _nonnegative_number(card, "safe_mm")
 
 
+def requested_dpi(spec: DesignSpec) -> int:
+    """Return the requested export DPI, defaulting to 300."""
+    value = spec._data.get("dpi", 300)
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError("Design Spec field 'dpi' must be a positive integer")
+    return value
+
+
 def event_value(spec: DesignSpec, field: str) -> str | None:
     """Return an event string without inventing missing event details."""
     event = spec._data.get("event")

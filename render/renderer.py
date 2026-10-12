@@ -11,9 +11,9 @@ from xml.sax.saxutils import escape
 
 from render import spec_adapter
 from render.loaders import LAYOUTS_DIR, THEMES_DIR, load_layout, load_theme
-from render.photo import initials, initials_markup, photo_markup
+from render.photo import best_contrast_text_color, initials, initials_markup, photo_markup
 from render.qr import qr_markup
-from render.text_fit import find_font_file, fit_text
+from render.text_fit import find_font_file, fit_text, measure_text_vertical_bounds
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -201,7 +201,13 @@ def _render_text(element: dict[str, Any], context: dict[str, Any]) -> str:
     left = x - max_width / 2 if alignment == "middle" else (x - max_width if alignment == "end" else x)
     clip_id = f"{element.get('id', 'text')}-clip"
     line_height = result.font_size * 1.2
-    first_baseline = y - (len(result.lines) - 1) * line_height / 2
+    line_bounds = [
+        measure_text_vertical_bounds(line, font_path, result.font_size)
+        for line in result.lines
+    ]
+    top = min(index * line_height - ascent for index, (ascent, _) in enumerate(line_bounds))
+    bottom = max(index * line_height + descent for index, (_, descent) in enumerate(line_bounds))
+    first_baseline = y - (top + bottom) / 2
     tspans = "".join(
         f'<tspan x="{_num(x)}" y="{_num(first_baseline + index * line_height)}">{_text(line)}</tspan>'
         for index, line in enumerate(result.lines)
@@ -229,8 +235,21 @@ def _render_logo(element: dict[str, Any], context: dict[str, Any]) -> str:
     element_id = f"logo-{logo_name}"
     if path is None:
         warnings.warn(f"Missing logo: assets/{logo_name}.svg or assets/{logo_name}.png")
+        background_color = _theme_color(context["colors"], "accent", context["theme_file"])
+        text_color_name, text_color = best_contrast_text_color(
+            background_color, context["colors"]
+        )
         placeholder = _missing_asset_markup(
-            element_id, f"LOGO MISSING: {logo_name}", x, y, slot_width, slot_height
+            element_id,
+            f"LOGO MISSING: {logo_name}",
+            x,
+            y,
+            slot_width,
+            slot_height,
+            background_color=background_color,
+            background_color_name="accent",
+            text_color_name=text_color_name,
+            text_color=text_color,
         )
         return placeholder.replace(
             'data-asset-status="placeholder"',
@@ -273,10 +292,12 @@ def _render_photo(element: dict[str, Any], context: dict[str, Any]) -> str:
     else:
         warnings.warn("Person photo is missing; drew an initials fallback")
     name = spec_adapter.person_value(context["person"], "name")
+    background_color = _element_color(element, context)
+    text_color_name, text_color = best_contrast_text_color(background_color, context["colors"])
     return initials_markup(
         element_id="person-photo", label=initials(name), x=x, y=y, width=width,
         height=height, shape=shape, radius=radius,
-        color=_element_color(element, context),
+        color=background_color, text_color=text_color, text_color_name=text_color_name,
     )
 
 
@@ -311,8 +332,21 @@ def _render_image(element: dict[str, Any], context: dict[str, Any]) -> str:
         if path.is_file() and path.parent == ASSETS_DIR.resolve():
             return _image_markup(path, str(element.get("id", "image")), x, y, width, height)
     warnings.warn(f"Image asset {source!r} is missing under assets/")
+    background_color = _theme_color(context["colors"], "accent", context["theme_file"])
+    text_color_name, text_color = best_contrast_text_color(
+        background_color, context["colors"]
+    )
     return _missing_asset_markup(
-        str(element.get("id", "image")), f"IMAGE MISSING: {source or 'not specified'}", x, y, width, height
+        str(element.get("id", "image")),
+        f"IMAGE MISSING: {source or 'not specified'}",
+        x,
+        y,
+        width,
+        height,
+        background_color=background_color,
+        background_color_name="accent",
+        text_color_name=text_color_name,
+        text_color=text_color,
     )
 
 
@@ -328,16 +362,19 @@ def _render_role_details(role_area: dict[str, Any], context: dict[str, Any]) -> 
         raise ValueError(f"Role-area label needs a position object in {context['layout_file']}")
     label_x, label_y = _point(label_position, context["layout_file"])
     cue_x, cue_y, cue_width, cue_height = _geometry(cue, context["layout_file"])
-    foreground = _theme_color(context["colors"], "text_on_primary", context["theme_file"])
+    label_color_name, label_color = best_contrast_text_color(
+        context["role_color"], context["colors"]
+    )
     label_size = _positive_layout_number(label, "font_size", context["layout_file"])
     label_markup = (
         f'<text id="role-label" x="{_num(label_x)}" y="{_num(label_y)}" '
+        f'data-theme-color="{_attr(label_color_name)}" '
         f'text-anchor="{_attr(label.get("alignment", "middle"))}" '
         f'font-family="{_attr(context["family"])}" font-size="{_num(label_size)}" '
-        f'font-weight="700" fill="{_attr(foreground)}">{_text(label_text)}</text>'
+        f'font-weight="700" fill="{_attr(label_color)}">{_text(label_text)}</text>'
     )
     shape = ROLE_CUES[context["role"]]
-    cue_markup = _cue_markup(shape, cue_x, cue_y, cue_width, cue_height, foreground)
+    cue_markup = _cue_markup(shape, cue_x, cue_y, cue_width, cue_height, label_color)
     return f'<g id="role-details">{label_markup}<g id="role-cue" data-cue="{shape}">{cue_markup}</g></g>'
 
 
@@ -482,14 +519,28 @@ def _image_markup(path: Path, element_id: str, x: float, y: float, width: float,
     )
 
 
-def _missing_asset_markup(element_id: str, label: str, x: float, y: float, width: float, height: float) -> str:
+def _missing_asset_markup(
+    element_id: str,
+    label: str,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    *,
+    background_color: str,
+    background_color_name: str,
+    text_color: str,
+    text_color_name: str,
+) -> str:
     """Draw an accessible, visibly labelled missing-image placeholder."""
     return (
         f'<g id="{_attr(element_id)}" data-asset-status="placeholder">'
         f'<rect x="{_num(x)}" y="{_num(y)}" width="{_num(width)}" height="{_num(height)}" '
-        f'rx="0.6" fill="#e5e7eb" stroke="#4b5563" stroke-dasharray="0.8 0.5"/>'
-        f'<text x="{_num(x + width / 2)}" y="{_num(y + height / 2)}" text-anchor="middle" '
-        f'font-size="1.5" fill="#374151">{_text(label)}</text></g>'
+        f'rx="0.6" fill="{_attr(background_color)}" data-theme-color="{_attr(background_color_name)}" '
+        f'stroke="{_attr(text_color)}" stroke-dasharray="0.8 0.5"/>'
+        f'<text id="{_attr(element_id)}-label" data-theme-color="{_attr(text_color_name)}" '
+        f'x="{_num(x + width / 2)}" y="{_num(y + height / 2)}" text-anchor="middle" '
+        f'font-size="1.5" fill="{_attr(text_color)}">{_text(label)}</text></g>'
     )
 
 
