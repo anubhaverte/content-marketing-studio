@@ -1,0 +1,22 @@
+{
+  "_placeholder": true,
+  "name": "Blue",
+  "colors": {
+    "primary": "#2457A7",
+    "secondary": "#DCE7F5",
+    "background": "#FFFFFF",
+    "text": "#172238",
+    "text_on_primary": "#FFFFFF",
+    "accent": "#CBD5E1"
+  },
+  "role_colors": {
+    "participant": "#2457A7",
+    "organizer": "#C2410C",
+    "mentor": "#15803D",
+    "volunteer": "#7E22CE"
+  },
+  "fonts": {
+    "heading": ["Arial", "Segoe UI"],
+    "body": ["Arial", "sans-serif"]
+  }
+}

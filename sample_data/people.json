@@ -1,0 +1,50 @@
+[
+  {
+    "id": "person-001",
+    "name": "Alexandria-Montgomery-Wilhelmina Catherine Alexandra Penelope Beatrice O'Connell",
+    "role": "participant",
+    "photo": "photos/tall.png"
+  },
+  {
+    "id": "person-002",
+    "name": "Cher",
+    "role": "participant",
+    "photo": "photos/wide.png"
+  },
+  {
+    "id": "person-003",
+    "name": "Élodie Núñez",
+    "role": "organizer",
+    "photo": "photos/tiny.png"
+  },
+  {
+    "id": "person-004",
+    "name": "Sample Mentor",
+    "role": "mentor",
+    "photo": "photos/wide.png"
+  },
+  {
+    "id": "person-005",
+    "name": "Sample Volunteer One",
+    "role": "volunteer",
+    "photo": null
+  },
+  {
+    "id": "person-006",
+    "name": "Sample Volunteer Two",
+    "role": "volunteer",
+    "photo": "photos/tall.png"
+  },
+  {
+    "id": "person-007",
+    "name": "María-José García-López",
+    "role": "organizer",
+    "photo": "photos/tiny.png"
+  },
+  {
+    "id": "person-008",
+    "name": "Avery Sample",
+    "role": "mentor",
+    "photo": "photos/wide.png"
+  }
+]
