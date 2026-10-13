@@ -12,3 +12,13 @@ python verify_phase4.py
 ```
 
 Expected result: pytest passes. Verification prints each person's issues and a `PASS`/`FAIL` line per check; with the bundled samples it currently reports text overflow for person-003 and low contrast for person-005, then exits nonzero. Placeholder logos and intentional shortening appear as warnings.
+
+## Export
+
+```powershell
+python tools\make_test_csv.py
+python -m export.cli --spec specs\temp_spec.json --people sample_data\test_250.csv --format pdf --dpi 300 --out out\batch.zip
+python verify_phase5a.py
+```
+
+Expected result: the CLI writes a ZIP with one PDF per valid person and `report.json`, prints totals, skipped rows, and elapsed time; Phase 5A verification prints `PASS` for the export checks.
