@@ -1,5 +1,7 @@
 """Fixed numbers used across the project. Everything is in millimeters (mm)."""
 
+SCHEMA_VERSION = "1.0"
+
 CARD_W_MM = 54        # trim width (final card)
 CARD_H_MM = 86        # trim height (final card)
 BLEED_MM = 3          # extra area beyond the trim line, so no white edge shows

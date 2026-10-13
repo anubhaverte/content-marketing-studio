@@ -1,10 +1,19 @@
 """Load and validate layout and theme JSON files with friendly error messages."""
 import json
 from pathlib import Path
+from typing import Optional
 
 from pydantic import ValidationError
 
-from app.spec.schema import DesignSpec, Layout, Theme
+from app.assets.brand_kit import load_brand_kit
+from app.spec.schema import (
+    BrandKit,
+    DesignSpec,
+    EventInfo,
+    Layout,
+    PrintSettings,
+    Theme,
+)
 
 
 class SpecError(Exception):
@@ -67,9 +76,46 @@ def load_theme(path: Path) -> Theme:
         raise SpecError(_format_errors(e, Path(path).name)) from e
 
 
-def merge_design_spec(layout: Layout, theme: Theme) -> DesignSpec:
-    """Combine a layout, a theme, the brand kit and event info into one DesignSpec.
+def merge_design_spec(
+    layout: Layout,
+    theme: Theme,
+    brand: Optional[BrandKit] = None,
+    event: Optional[EventInfo] = None,
+    print_settings: Optional[PrintSettings] = None,
+) -> DesignSpec:
+    """Combine a layout, theme, brand kit, event info, and print settings into one DesignSpec.
 
-    Implemented in Phase 2.
+    Never mutates input objects. Brand colors override theme primary/secondary colors.
+    Validates that all logo elements reference a logo ID present in brand.logos.
     """
-    raise NotImplementedError("Phase 2: merge layout + theme + brand kit + event into a DesignSpec")
+    layout_copy = layout.model_copy(deep=True)
+    theme_copy = theme.model_copy(deep=True)
+    brand_copy = brand.model_copy(deep=True) if brand is not None else load_brand_kit()
+    event_copy = event.model_copy(deep=True) if event is not None else EventInfo()
+    settings_copy = print_settings.model_copy(deep=True) if print_settings is not None else PrintSettings()
+
+    # Override theme primary/secondary colors if defined in brand kit
+    updated_colors = theme_copy.colors.model_dump()
+    if brand_copy.primary_color is not None:
+        updated_colors["primary"] = brand_copy.primary_color
+    if brand_copy.secondary_color is not None:
+        updated_colors["secondary"] = brand_copy.secondary_color
+    theme_copy = theme_copy.model_copy(update={"colors": type(theme_copy.colors)(**updated_colors)})
+
+    # Validate that every logo element's src exists in brand.logos
+    for el in layout_copy.elements:
+        if getattr(el, "type", None) == "logo":
+            logo_src = getattr(el, "src", "")
+            if logo_src not in brand_copy.logos:
+                raise SpecError(f"logo '{logo_src}' used in layout '{layout_copy.name}' is not in the brand kit")
+
+    return DesignSpec(
+        layout_name=layout_copy.name,
+        theme_name=theme_copy.name,
+        page=layout_copy.page.model_copy(deep=True),
+        theme=theme_copy,
+        elements=layout_copy.elements,
+        brand=brand_copy,
+        event=event_copy,
+        print_settings=settings_copy,
+    )

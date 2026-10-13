@@ -26,10 +26,12 @@ from app.spec.constants import (
     CARD_W_MM,
     DEFAULT_ROLES,
     SAFE_MM,
+    SCHEMA_VERSION,
     THEME_TOKENS,
 )
 
 HEX_RE = re.compile(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+ELEMENT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
 
 class StrictModel(BaseModel):
@@ -91,8 +93,12 @@ Fill = Annotated[
 
 
 # -------------------------------------------------------- layout elements
+ElementIdField = Field(default=None, pattern=r"^[a-z0-9][a-z0-9_-]*$")
+
+
 class RectEl(StrictModel):
     type: Literal["rect"]
+    id: Optional[str] = ElementIdField
     x: float
     y: float
     w: float = Field(gt=0)
@@ -107,6 +113,7 @@ class RectEl(StrictModel):
 
 class LineEl(StrictModel):
     type: Literal["line"]
+    id: Optional[str] = ElementIdField
     x1: float
     y1: float
     x2: float
@@ -119,6 +126,7 @@ class LineEl(StrictModel):
 
 class CircleEl(StrictModel):
     type: Literal["circle"]
+    id: Optional[str] = ElementIdField
     cx: float
     cy: float
     r: float = Field(gt=0)
@@ -130,6 +138,7 @@ class CircleEl(StrictModel):
 
 class TextEl(StrictModel):
     type: Literal["text"]
+    id: Optional[str] = ElementIdField
     field: Optional[str] = None   # data field to show, e.g. "name"
     value: Optional[str] = None   # or fixed text
     x: float
@@ -155,6 +164,7 @@ class TextEl(StrictModel):
 
 class PhotoEl(StrictModel):
     type: Literal["photo"]
+    id: Optional[str] = ElementIdField
     field: str = "photo"
     x: float
     y: float
@@ -166,6 +176,7 @@ class PhotoEl(StrictModel):
 
 class LogoEl(StrictModel):
     type: Literal["logo"]
+    id: Optional[str] = ElementIdField
     src: str                      # logo id, e.g. "acm_nitsurat"
     x: float
     y: float
@@ -176,6 +187,7 @@ class LogoEl(StrictModel):
 
 class RoleBadgeEl(StrictModel):
     type: Literal["role_badge"]
+    id: Optional[str] = ElementIdField
     field: str = "role"
     x: float
     y: float
@@ -186,6 +198,7 @@ class RoleBadgeEl(StrictModel):
 
 class QrEl(StrictModel):
     type: Literal["qr"]
+    id: Optional[str] = ElementIdField
     field: str = "qr_url"
     x: float
     y: float
@@ -203,6 +216,7 @@ class QrEl(StrictModel):
 
 class SvgAssetEl(StrictModel):
     type: Literal["svg_asset"]
+    id: Optional[str] = ElementIdField
     src: str                      # file name in assets/art
     x: float
     y: float
@@ -214,6 +228,16 @@ Element = Annotated[
     Union[RectEl, LineEl, CircleEl, TextEl, PhotoEl, LogoEl, RoleBadgeEl, QrEl, SvgAssetEl],
     Field(discriminator="type"),
 ]
+
+
+def _validate_unique_ids(elements: list[Any]) -> None:
+    seen = set()
+    for el in elements:
+        el_id = getattr(el, "id", None)
+        if el_id is not None:
+            if el_id in seen:
+                raise ValueError(f"duplicate element id '{el_id}'")
+            seen.add(el_id)
 
 
 # ------------------------------------------------------------ page, layout
@@ -236,6 +260,11 @@ class Layout(StrictModel):
     name: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")
     page: PageSpec = PageSpec()
     elements: list[Element] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _check_unique_ids(self) -> "Layout":
+        _validate_unique_ids(self.elements)
+        return self
 
 
 # ------------------------------------------------------------------- theme
@@ -276,6 +305,14 @@ class Person(StrictModel):
     email: Optional[str] = None
     photo: Optional[str] = None    # file name of the photo
     qr_url: Optional[str] = None
+    extra: dict[str, str] = Field(default_factory=dict)
+
+    def get_field(self, name: str) -> Optional[str]:
+        """Return the value of a known attribute or extra[name], or None."""
+        known = ("name", "role", "id", "team", "email", "photo", "qr_url")
+        if name in known:
+            return getattr(self, name)
+        return self.extra.get(name, None)
 
 
 class EventInfo(StrictModel):
@@ -299,8 +336,23 @@ class BrandKit(StrictModel):
         return self
 
 
+class PrintSettings(StrictModel):
+    """Print production and export settings."""
+    dpi: int = Field(default=300)
+    include_bleed: bool = True
+    crop_marks: bool = False
+    color_mode: Literal["rgb", "grayscale"] = "rgb"
+
+    @model_validator(mode="after")
+    def _valid_dpi(self) -> "PrintSettings":
+        if self.dpi not in (150, 300, 600):
+            raise ValueError(f"dpi must be one of 150, 300, 600; got {self.dpi}")
+        return self
+
+
 class DesignSpec(StrictModel):
     """Layout + theme + brand kit + event info merged. The renderer reads this (Phase 2)."""
+    schema_version: str = SCHEMA_VERSION
     layout_name: str
     theme_name: str
     page: PageSpec
@@ -308,3 +360,30 @@ class DesignSpec(StrictModel):
     elements: list[Element]
     brand: BrandKit
     event: EventInfo = EventInfo()
+    print_settings: PrintSettings = Field(default_factory=PrintSettings)
+
+    @model_validator(mode="after")
+    def _check_unique_ids(self) -> "DesignSpec":
+        _validate_unique_ids(self.elements)
+        return self
+
+
+# ------------------------------------------------------------- patch models
+class PatchOp(StrictModel):
+    """A patch operation for modifying a DesignSpec."""
+    op: Literal["set", "add", "remove"]
+    path: str
+    value: Any = None
+
+    @model_validator(mode="after")
+    def _check_op_value(self) -> "PatchOp":
+        if self.op in ("set", "add"):
+            if "value" not in self.model_fields_set:
+                raise ValueError(f"op '{self.op}' requires 'value' to be provided")
+        elif self.op == "remove":
+            if "value" in self.model_fields_set and self.value is not None:
+                raise ValueError("op 'remove' must not provide a value")
+
+        if self.path == "schema_version" or self.path.startswith("schema_version."):
+            raise ValueError("patching 'schema_version' is not allowed")
+        return self

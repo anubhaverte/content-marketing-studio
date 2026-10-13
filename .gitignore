@@ -8,3 +8,6 @@ sample_data/photos/
 node_modules/
 .DS_Store
 *.pyc
+backend/requirements.lock.txt
+.vscode/*
+!.vscode/settings.json

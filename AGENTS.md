@@ -18,3 +18,9 @@ At the start of every session and before starting any phase, read docs/PROJECT_C
 - backend/ (FastAPI app, scripts, tests; run all Python commands from here)
 - frontend/ (Next.js, built in Phase 6)
 - assets/, sample_data/, output/ at the repo root
+
+## Team ownership and git rules
+- At the start of each session, read docs/TEAM.md and docs/OWNERS.json.
+- Edit only files owned by the person you are helping (P1, P2, P3, or P4).
+- Run `python scripts/check_ownership.py --owner <pN>` and `python -m pytest` before every push.
+- If a change requires a file owned by someone else, STOP and ask the user to coordinate with that teammate rather than editing it directly.

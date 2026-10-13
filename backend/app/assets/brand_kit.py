@@ -1,15 +1,18 @@
-"""Load brand kits (logos, colors, fonts). ACM NIT Surat and SVNIT are built in.
-
-STUB: implemented in a later phase (see each function).
-"""
-from pathlib import Path
-from typing import Any, Optional
+"""Load brand kits (logos, colors, fonts). ACM NIT Surat and SVNIT are built in."""
 from app.spec.schema import BrandKit
 
 
-def load_brand_kit(name: str = 'default') -> BrandKit:
-    """Return the brand kit with both logos and optional event colors/fonts.
+def load_brand_kit(name: str = "default") -> BrandKit:
+    """Return the brand kit with both logos as repo-relative paths.
 
-    Implemented in Phase 2.
+    Raises:
+        ValueError: If name is anything other than 'default'.
     """
-    raise NotImplementedError("Phase 2: Return the brand kit with both logos and optional event colors/fonts")
+    if name != "default":
+        raise ValueError(f"Unknown brand kit '{name}'. Only 'default' is supported.")
+    return BrandKit(
+        logos={
+            "acm_nitsurat": "assets/logos/acm_nitsurat.svg",
+            "svnit": "assets/logos/svnit.svg",
+        }
+    )
