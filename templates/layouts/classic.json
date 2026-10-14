@@ -1,0 +1,93 @@
+{
+  "_placeholder": true,
+  "name": "Classic",
+  "role_area": {
+    "label": {
+      "position": { "x": 34, "y": 82 },
+      "font_size": 3.2,
+      "alignment": "middle"
+    },
+    "cue": {
+      "position": { "x": 7, "y": 78.5 },
+      "size": { "width": 5, "height": 5 }
+    }
+  },
+  "elements": [
+    {
+      "id": "left-logo",
+      "type": "logo",
+      "data": "acm",
+      "position": { "x": 6, "y": 6 },
+      "size": { "width": 21, "height": 8 },
+      "color": "accent"
+    },
+    {
+      "id": "right-logo",
+      "type": "logo",
+      "data": "svnit",
+      "position": { "x": 33, "y": 6 },
+      "size": { "width": 21, "height": 8 },
+      "color": "accent"
+    },
+    {
+      "id": "event-band",
+      "type": "rect",
+      "position": { "x": 0, "y": 18 },
+      "size": { "width": 60, "height": 13 },
+      "color": "primary"
+    },
+    {
+      "id": "event-name",
+      "type": "text",
+      "data": "event.name",
+      "position": { "x": 30, "y": 26.5 },
+      "size": { "width": 48, "height": 5 },
+      "color": "text_on_primary",
+      "font_size": 3.4,
+      "min_font_size": 2.8,
+      "max_lines": 1,
+      "weight": "700",
+      "alignment": "middle",
+      "max_width": 48
+    },
+    {
+      "id": "person-photo",
+      "type": "photo",
+      "position": { "x": 19, "y": 33 },
+      "size": { "width": 22, "height": 22 },
+      "color": "accent",
+      "shape": "circle"
+    },
+    {
+      "id": "person-name",
+      "type": "text",
+      "data": "person.name",
+      "position": { "x": 30, "y": 66 },
+      "size": { "width": 48, "height": 9 },
+      "color": "text",
+      "font_size": 5,
+      "min_font_size": 3,
+      "max_lines": 2,
+      "weight": "700",
+      "alignment": "middle",
+      "max_width": 48
+    },
+    {
+      "id": "attendance-qr",
+      "type": "qr",
+      "position": { "x": 44, "y": 38 },
+      "size": { "width": 12, "height": 12 },
+      "qr_size_mm": 12,
+      "color": "text",
+      "data": "attendance"
+    },
+    {
+      "id": "role-band",
+      "type": "rect",
+      "position": { "x": 0, "y": 74 },
+      "size": { "width": 60, "height": 18 },
+      "color": "primary",
+      "role_area": true
+    }
+  ]
+}

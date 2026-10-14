@@ -1,4 +1,4 @@
-# ID Card Studio
+﻿# ID Card Studio (content-marketing-studio)
 
 A design tool that turns a plain-English request into print-ready ID cards (PDF, PNG, SVG) for college events. Cards are built from layout and theme JSON files plus real data, using code. No image generation. Built for the ACM NIT Surat hackathon (Track 4).
 
@@ -54,6 +54,29 @@ sample_data/       generated test CSV and photos
 output/            generated files (git-ignored)
 docs/              project context, conventions, phase checklist
 ```
+
+## QA checks (Phase 4)
+
+`qa.run_qa` checks measured text overflow and truncation, logo proportions, WCAG text contrast, unintended layout overlaps, missing source fields and fallback use, rendered data matching, and PNG resolution at the requested DPI (300 by default). Results include a check name, severity, person ID, and plain-language message; `qa.report` formats readable output or JSON-friendly dictionaries.
+
+Run the Phase 4 checks and focused tests:
+
+```powershell
+python -m pytest tests\test_qa.py
+python verify_phase4.py
+```
+
+Expected result: pytest passes. Verification prints each person's issues and a `PASS`/`FAIL` line per check; with the bundled samples it currently reports text overflow for person-003 and low contrast for person-005, then exits nonzero. Placeholder logos and intentional shortening appear as warnings.
+
+## Export (Phase 5A)
+
+```powershell
+python tools\make_test_csv.py
+python -m export.cli --spec specs\temp_spec.json --people sample_data\test_250.csv --format pdf --dpi 300 --out out\batch.zip
+python verify_phase5a.py
+```
+
+Expected result: the CLI writes a ZIP with one PDF per valid person and `report.json`, prints totals, skipped rows, and elapsed time; Phase 5A verification prints `PASS` for the export checks.
 
 ## Notes
 - The logos in `assets/logos/` are PLACEHOLDERS. Replace them with the real ACM NIT Surat and SVNIT logos using the same file names.

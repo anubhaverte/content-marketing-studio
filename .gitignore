@@ -1,13 +1,25 @@
+﻿# Python & virtual environments
 .venv/
+venv/
 __pycache__/
+*.pyc
 .pytest_cache/
+
+# Environment variables & secrets
 .env
+
+# Build & output artifacts
 output/*
 !output/.gitkeep
-sample_data/photos/
+sample_output/
+out/
 node_modules/
-.DS_Store
-*.pyc
 backend/requirements.lock.txt
+.DS_Store
+
+# Generated sample data photos
+sample_data/photos/
+
+# IDE configurations
 .vscode/*
 !.vscode/settings.json

@@ -17,20 +17,20 @@ Track progress for Person 1 implementation tasks.
   - Dotted path `PatchOp` ("set", "add", "remove") and pure `apply_patch` engine
   - Deep-copy merging in `merge_design_spec()` with brand override and logo validation
 
-- [ ] **Task 3: CSV loader, column mapping, and validation**
+- [x] **Task 3: CSV loader, column mapping, and validation**
   - Robust CSV ingestion, auto-detection of delimiters, column aliasing
   - Issue detection (missing fields, format errors, unreadable photos)
   - Clean `Person` record generation
 
-- [ ] **Task 4: AI brief extraction (strict JSON, retry)**
+- [x] **Task 4: AI brief extraction (strict JSON, retry)**
   - Structured prompt to Gemini with system instructions
   - JSON schema enforcement and validation retry logic
 
-- [ ] **Task 5: Missing-info logic and follow-up questions**
+- [x] **Task 5: Missing-info logic and follow-up questions**
   - Identification of required vs optional event info
   - Dynamic interactive follow-up questions for organizers
 
-- [ ] **Task 6: Draft generator (layout x theme = 3 specs)**
+- [x] **Task 6: Draft generator (layout x theme = 3 specs)**
   - Cartesian product matching layouts and themes with event brief
   - Color palette selection and layout fit scoring
 
