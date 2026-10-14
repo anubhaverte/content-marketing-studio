@@ -1,0 +1,29 @@
+{
+  "additionalProperties": false,
+  "description": "A patch operation for modifying a DesignSpec.",
+  "properties": {
+    "op": {
+      "enum": [
+        "set",
+        "add",
+        "remove"
+      ],
+      "title": "Op",
+      "type": "string"
+    },
+    "path": {
+      "title": "Path",
+      "type": "string"
+    },
+    "value": {
+      "default": null,
+      "title": "Value"
+    }
+  },
+  "required": [
+    "op",
+    "path"
+  ],
+  "title": "PatchOp",
+  "type": "object"
+}

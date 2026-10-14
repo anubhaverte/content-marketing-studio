@@ -1,0 +1,7 @@
+"""Make `app` and the scripts importable in tests."""
+import sys
+from pathlib import Path
+
+BACKEND = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(BACKEND / "scripts"))

@@ -1,7 +1,25 @@
-__pycache__/
-*.pyc
+﻿# Python & virtual environments
 .venv/
 venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environment variables & secrets
+.env
+
+# Build & output artifacts
+output/*
+!output/.gitkeep
 sample_output/
 out/
-.vscode/
+node_modules/
+backend/requirements.lock.txt
+.DS_Store
+
+# Generated sample data photos
+sample_data/photos/
+
+# IDE configurations
+.vscode/*
+!.vscode/settings.json

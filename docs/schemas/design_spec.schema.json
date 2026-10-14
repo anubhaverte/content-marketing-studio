@@ -1,0 +1,1090 @@
+{
+  "$defs": {
+    "BrandKit": {
+      "additionalProperties": false,
+      "properties": {
+        "fonts": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThemeFonts"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "logos": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Logos",
+          "type": "object"
+        },
+        "primary_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary Color"
+        },
+        "secondary_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secondary Color"
+        }
+      },
+      "required": [
+        "logos"
+      ],
+      "title": "BrandKit",
+      "type": "object"
+    },
+    "CircleEl": {
+      "additionalProperties": false,
+      "properties": {
+        "cx": {
+          "title": "Cx",
+          "type": "number"
+        },
+        "cy": {
+          "title": "Cy",
+          "type": "number"
+        },
+        "fill": {
+          "default": "none",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/GradientFill"
+            }
+          ],
+          "title": "Fill"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "opacity": {
+          "default": 1,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Opacity",
+          "type": "number"
+        },
+        "r": {
+          "exclusiveMinimum": 0,
+          "title": "R",
+          "type": "number"
+        },
+        "stroke": {
+          "default": "none",
+          "title": "Stroke",
+          "type": "string"
+        },
+        "stroke_width": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Stroke Width",
+          "type": "number"
+        },
+        "type": {
+          "const": "circle",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "cx",
+        "cy",
+        "r"
+      ],
+      "title": "CircleEl",
+      "type": "object"
+    },
+    "EventInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "dates": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dates"
+        },
+        "event_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Event Name"
+        },
+        "tagline": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tagline"
+        },
+        "venue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Venue"
+        }
+      },
+      "title": "EventInfo",
+      "type": "object"
+    },
+    "GradientFill": {
+      "additionalProperties": false,
+      "description": "A gradient fill. Stops use theme tokens: [[0.0, \"primary\"], [1.0, \"background\"]].",
+      "properties": {
+        "angle": {
+          "default": 0,
+          "title": "Angle",
+          "type": "number"
+        },
+        "gradient": {
+          "const": "linear",
+          "title": "Gradient",
+          "type": "string"
+        },
+        "stops": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 2,
+          "title": "Stops",
+          "type": "array"
+        }
+      },
+      "required": [
+        "gradient",
+        "stops"
+      ],
+      "title": "GradientFill",
+      "type": "object"
+    },
+    "LineEl": {
+      "additionalProperties": false,
+      "properties": {
+        "dash": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dash"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "opacity": {
+          "default": 1,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Opacity",
+          "type": "number"
+        },
+        "stroke": {
+          "title": "Stroke",
+          "type": "string"
+        },
+        "stroke_width": {
+          "default": 0.3,
+          "exclusiveMinimum": 0,
+          "title": "Stroke Width",
+          "type": "number"
+        },
+        "type": {
+          "const": "line",
+          "title": "Type",
+          "type": "string"
+        },
+        "x1": {
+          "title": "X1",
+          "type": "number"
+        },
+        "x2": {
+          "title": "X2",
+          "type": "number"
+        },
+        "y1": {
+          "title": "Y1",
+          "type": "number"
+        },
+        "y2": {
+          "title": "Y2",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "x1",
+        "y1",
+        "x2",
+        "y2",
+        "stroke"
+      ],
+      "title": "LineEl",
+      "type": "object"
+    },
+    "LogoEl": {
+      "additionalProperties": false,
+      "properties": {
+        "fit": {
+          "const": "contain",
+          "default": "contain",
+          "title": "Fit",
+          "type": "string"
+        },
+        "h": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "H"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "src": {
+          "title": "Src",
+          "type": "string"
+        },
+        "type": {
+          "const": "logo",
+          "title": "Type",
+          "type": "string"
+        },
+        "w": {
+          "exclusiveMinimum": 0,
+          "title": "W",
+          "type": "number"
+        },
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "src",
+        "x",
+        "y",
+        "w"
+      ],
+      "title": "LogoEl",
+      "type": "object"
+    },
+    "PageSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "bleed_mm": {
+          "default": 3,
+          "minimum": 0,
+          "title": "Bleed Mm",
+          "type": "number"
+        },
+        "height_mm": {
+          "default": 86,
+          "exclusiveMinimum": 0,
+          "title": "Height Mm",
+          "type": "number"
+        },
+        "safe_mm": {
+          "default": 4,
+          "minimum": 0,
+          "title": "Safe Mm",
+          "type": "number"
+        },
+        "width_mm": {
+          "default": 54,
+          "exclusiveMinimum": 0,
+          "title": "Width Mm",
+          "type": "number"
+        }
+      },
+      "title": "PageSpec",
+      "type": "object"
+    },
+    "PhotoEl": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "default": "photo",
+          "title": "Field",
+          "type": "string"
+        },
+        "h": {
+          "exclusiveMinimum": 0,
+          "title": "H",
+          "type": "number"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "radius": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Radius",
+          "type": "number"
+        },
+        "shape": {
+          "default": "rect",
+          "enum": [
+            "rect",
+            "rounded",
+            "circle"
+          ],
+          "title": "Shape",
+          "type": "string"
+        },
+        "type": {
+          "const": "photo",
+          "title": "Type",
+          "type": "string"
+        },
+        "w": {
+          "exclusiveMinimum": 0,
+          "title": "W",
+          "type": "number"
+        },
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "title": "PhotoEl",
+      "type": "object"
+    },
+    "PrintSettings": {
+      "additionalProperties": false,
+      "description": "Print production and export settings.",
+      "properties": {
+        "color_mode": {
+          "default": "rgb",
+          "enum": [
+            "rgb",
+            "grayscale"
+          ],
+          "title": "Color Mode",
+          "type": "string"
+        },
+        "crop_marks": {
+          "default": false,
+          "title": "Crop Marks",
+          "type": "boolean"
+        },
+        "dpi": {
+          "default": 300,
+          "title": "Dpi",
+          "type": "integer"
+        },
+        "include_bleed": {
+          "default": true,
+          "title": "Include Bleed",
+          "type": "boolean"
+        }
+      },
+      "title": "PrintSettings",
+      "type": "object"
+    },
+    "QrEl": {
+      "additionalProperties": false,
+      "properties": {
+        "bg": {
+          "default": "background",
+          "title": "Bg",
+          "type": "string"
+        },
+        "fg": {
+          "default": "text",
+          "title": "Fg",
+          "type": "string"
+        },
+        "field": {
+          "default": "qr_url",
+          "title": "Field",
+          "type": "string"
+        },
+        "h": {
+          "exclusiveMinimum": 0,
+          "title": "H",
+          "type": "number"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "type": {
+          "const": "qr",
+          "title": "Type",
+          "type": "string"
+        },
+        "w": {
+          "exclusiveMinimum": 0,
+          "title": "W",
+          "type": "number"
+        },
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "title": "QrEl",
+      "type": "object"
+    },
+    "RectEl": {
+      "additionalProperties": false,
+      "properties": {
+        "dash": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dash"
+        },
+        "fill": {
+          "default": "none",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/GradientFill"
+            }
+          ],
+          "title": "Fill"
+        },
+        "h": {
+          "exclusiveMinimum": 0,
+          "title": "H",
+          "type": "number"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "opacity": {
+          "default": 1,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Opacity",
+          "type": "number"
+        },
+        "radius": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Radius",
+          "type": "number"
+        },
+        "stroke": {
+          "default": "none",
+          "title": "Stroke",
+          "type": "string"
+        },
+        "stroke_width": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Stroke Width",
+          "type": "number"
+        },
+        "type": {
+          "const": "rect",
+          "title": "Type",
+          "type": "string"
+        },
+        "w": {
+          "exclusiveMinimum": 0,
+          "title": "W",
+          "type": "number"
+        },
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "title": "RectEl",
+      "type": "object"
+    },
+    "RoleBadgeEl": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "default": "role",
+          "title": "Field",
+          "type": "string"
+        },
+        "h": {
+          "exclusiveMinimum": 0,
+          "title": "H",
+          "type": "number"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "text_color": {
+          "default": "background",
+          "title": "Text Color",
+          "type": "string"
+        },
+        "type": {
+          "const": "role_badge",
+          "title": "Type",
+          "type": "string"
+        },
+        "w": {
+          "exclusiveMinimum": 0,
+          "title": "W",
+          "type": "number"
+        },
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "title": "RoleBadgeEl",
+      "type": "object"
+    },
+    "SvgAssetEl": {
+      "additionalProperties": false,
+      "properties": {
+        "h": {
+          "exclusiveMinimum": 0,
+          "title": "H",
+          "type": "number"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "src": {
+          "title": "Src",
+          "type": "string"
+        },
+        "type": {
+          "const": "svg_asset",
+          "title": "Type",
+          "type": "string"
+        },
+        "w": {
+          "exclusiveMinimum": 0,
+          "title": "W",
+          "type": "number"
+        },
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "src",
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "title": "SvgAssetEl",
+      "type": "object"
+    },
+    "TextEl": {
+      "additionalProperties": false,
+      "properties": {
+        "align": {
+          "default": "left",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ],
+          "title": "Align",
+          "type": "string"
+        },
+        "bold": {
+          "default": false,
+          "title": "Bold",
+          "type": "boolean"
+        },
+        "color": {
+          "default": "text",
+          "title": "Color",
+          "type": "string"
+        },
+        "field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Field"
+        },
+        "font": {
+          "default": "body",
+          "enum": [
+            "heading",
+            "body"
+          ],
+          "title": "Font",
+          "type": "string"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "max_font": {
+          "default": 14,
+          "exclusiveMinimum": 0,
+          "title": "Max Font",
+          "type": "number"
+        },
+        "max_lines": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Max Lines",
+          "type": "integer"
+        },
+        "min_font": {
+          "default": 8,
+          "exclusiveMinimum": 0,
+          "title": "Min Font",
+          "type": "number"
+        },
+        "type": {
+          "const": "text",
+          "title": "Type",
+          "type": "string"
+        },
+        "uppercase": {
+          "default": false,
+          "title": "Uppercase",
+          "type": "boolean"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "w": {
+          "exclusiveMinimum": 0,
+          "title": "W",
+          "type": "number"
+        },
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "x",
+        "y",
+        "w"
+      ],
+      "title": "TextEl",
+      "type": "object"
+    },
+    "Theme": {
+      "additionalProperties": false,
+      "properties": {
+        "colors": {
+          "$ref": "#/$defs/ThemeColors"
+        },
+        "fonts": {
+          "$ref": "#/$defs/ThemeFonts"
+        },
+        "name": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "role_colors": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Role Colors",
+          "type": "object"
+        }
+      },
+      "required": [
+        "name",
+        "colors",
+        "fonts",
+        "role_colors"
+      ],
+      "title": "Theme",
+      "type": "object"
+    },
+    "ThemeColors": {
+      "additionalProperties": false,
+      "properties": {
+        "accent": {
+          "title": "Accent",
+          "type": "string"
+        },
+        "background": {
+          "title": "Background",
+          "type": "string"
+        },
+        "primary": {
+          "title": "Primary",
+          "type": "string"
+        },
+        "secondary": {
+          "title": "Secondary",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "background",
+        "primary",
+        "secondary",
+        "accent",
+        "text"
+      ],
+      "title": "ThemeColors",
+      "type": "object"
+    },
+    "ThemeFonts": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "title": "Body",
+          "type": "string"
+        },
+        "heading": {
+          "title": "Heading",
+          "type": "string"
+        }
+      },
+      "required": [
+        "heading",
+        "body"
+      ],
+      "title": "ThemeFonts",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Layout + theme + brand kit + event info merged. The renderer reads this (Phase 2).",
+  "properties": {
+    "brand": {
+      "$ref": "#/$defs/BrandKit"
+    },
+    "elements": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "circle": "#/$defs/CircleEl",
+            "line": "#/$defs/LineEl",
+            "logo": "#/$defs/LogoEl",
+            "photo": "#/$defs/PhotoEl",
+            "qr": "#/$defs/QrEl",
+            "rect": "#/$defs/RectEl",
+            "role_badge": "#/$defs/RoleBadgeEl",
+            "svg_asset": "#/$defs/SvgAssetEl",
+            "text": "#/$defs/TextEl"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/RectEl"
+          },
+          {
+            "$ref": "#/$defs/LineEl"
+          },
+          {
+            "$ref": "#/$defs/CircleEl"
+          },
+          {
+            "$ref": "#/$defs/TextEl"
+          },
+          {
+            "$ref": "#/$defs/PhotoEl"
+          },
+          {
+            "$ref": "#/$defs/LogoEl"
+          },
+          {
+            "$ref": "#/$defs/RoleBadgeEl"
+          },
+          {
+            "$ref": "#/$defs/QrEl"
+          },
+          {
+            "$ref": "#/$defs/SvgAssetEl"
+          }
+        ]
+      },
+      "title": "Elements",
+      "type": "array"
+    },
+    "event": {
+      "$ref": "#/$defs/EventInfo",
+      "default": {
+        "dates": null,
+        "event_name": null,
+        "tagline": null,
+        "venue": null
+      }
+    },
+    "layout_name": {
+      "title": "Layout Name",
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/PageSpec"
+    },
+    "print_settings": {
+      "$ref": "#/$defs/PrintSettings"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "theme": {
+      "$ref": "#/$defs/Theme"
+    },
+    "theme_name": {
+      "title": "Theme Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "layout_name",
+    "theme_name",
+    "page",
+    "theme",
+    "elements",
+    "brand"
+  ],
+  "title": "DesignSpec",
+  "type": "object"
+}

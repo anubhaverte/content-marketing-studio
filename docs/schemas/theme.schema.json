@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "ThemeColors": {
+      "additionalProperties": false,
+      "properties": {
+        "accent": {
+          "title": "Accent",
+          "type": "string"
+        },
+        "background": {
+          "title": "Background",
+          "type": "string"
+        },
+        "primary": {
+          "title": "Primary",
+          "type": "string"
+        },
+        "secondary": {
+          "title": "Secondary",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "background",
+        "primary",
+        "secondary",
+        "accent",
+        "text"
+      ],
+      "title": "ThemeColors",
+      "type": "object"
+    },
+    "ThemeFonts": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "title": "Body",
+          "type": "string"
+        },
+        "heading": {
+          "title": "Heading",
+          "type": "string"
+        }
+      },
+      "required": [
+        "heading",
+        "body"
+      ],
+      "title": "ThemeFonts",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "colors": {
+      "$ref": "#/$defs/ThemeColors"
+    },
+    "fonts": {
+      "$ref": "#/$defs/ThemeFonts"
+    },
+    "name": {
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "title": "Name",
+      "type": "string"
+    },
+    "role_colors": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Role Colors",
+      "type": "object"
+    }
+  },
+  "required": [
+    "name",
+    "colors",
+    "fonts",
+    "role_colors"
+  ],
+  "title": "Theme",
+  "type": "object"
+}

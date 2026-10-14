@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="200" height="100">
+  <rect x="2" y="2" width="196" height="96" rx="10" fill="#FFF4EC" stroke="#D9480F" stroke-width="4"/>
+  <text x="100" y="45" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="bold" fill="#D9480F">PLACEHOLDER</text>
+  <text x="100" y="70" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="16" fill="#7A2E0B">SVNIT</text>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="200" height="100">
+  <rect x="2" y="2" width="196" height="96" rx="10" fill="#EEF3FB" stroke="#1F6FEB" stroke-width="4"/>
+  <text x="100" y="45" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1F6FEB">PLACEHOLDER</text>
+  <text x="100" y="70" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="16" fill="#1F3A5F">ACM NIT SURAT</text>
+</svg>

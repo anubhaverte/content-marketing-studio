@@ -1,0 +1,5 @@
+[
+  { "id": "participant", "label": "Participant", "badge_text": "PARTICIPANT", "icon": null },
+  { "id": "organizer",   "label": "Organizer",   "badge_text": "ORGANIZER",   "icon": null },
+  { "id": "mentor",      "label": "Mentor",      "badge_text": "MENTOR",      "icon": null }
+]

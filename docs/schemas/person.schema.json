@@ -1,0 +1,88 @@
+{
+  "additionalProperties": false,
+  "description": "One row of participant data. Only the name is required.",
+  "properties": {
+    "email": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Email"
+    },
+    "extra": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Extra",
+      "type": "object"
+    },
+    "id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Id"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "photo": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Photo"
+    },
+    "qr_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Qr Url"
+    },
+    "role": {
+      "default": "participant",
+      "title": "Role",
+      "type": "string"
+    },
+    "team": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Team"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "Person",
+  "type": "object"
+}
