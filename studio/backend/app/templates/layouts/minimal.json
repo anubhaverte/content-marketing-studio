@@ -1,0 +1,161 @@
+{
+  "id": "minimal",
+  "name": "Minimal Editorial Portrait",
+  "version": "1.0.0",
+  "description": "Clean editorial layout with prominent large attendee name, compact photo, and generous whitespace.",
+  "canvas": {
+    "width": 60.0,
+    "height": 92.0,
+    "trim_width": 54.0,
+    "trim_height": 86.0,
+    "bleed": 3.0,
+    "unit": "mm"
+  },
+  "dimensions": {
+    "canvas_width": 60.0,
+    "canvas_height": 92.0,
+    "trim_width": 54.0,
+    "trim_height": 86.0,
+    "bleed": 3.0,
+    "unit": "mm"
+  },
+  "elements": [
+    {
+      "type": "rect",
+      "x": 0.0,
+      "y": 0.0,
+      "w": 60.0,
+      "h": 92.0,
+      "fill": "background"
+    },
+    {
+      "type": "logo",
+      "src": "acm_nit_surat",
+      "x": 7.0,
+      "y": 7.5,
+      "w": 15.0,
+      "h": 5.5,
+      "fit": "contain"
+    },
+    {
+      "type": "logo",
+      "src": "svnit",
+      "x": 38.0,
+      "y": 7.5,
+      "w": 15.0,
+      "h": 5.5,
+      "fit": "contain"
+    },
+    {
+      "type": "line",
+      "x1": 7.0,
+      "y1": 14.5,
+      "x2": 53.0,
+      "y2": 14.5,
+      "stroke": "muted",
+      "stroke_width": 0.25
+    },
+    {
+      "type": "photo",
+      "field": "photo",
+      "x": 7.0,
+      "y": 18.0,
+      "w": 15.0,
+      "h": 15.0,
+      "shape": "circle",
+      "border_color": "muted",
+      "border_width": 0.4
+    },
+    {
+      "type": "role_badge",
+      "field": "role",
+      "x": 25.0,
+      "y": 22.0,
+      "w": 22.0,
+      "h": 6.5,
+      "shape": "pill",
+      "color": "background",
+      "background": "role"
+    },
+    {
+      "type": "text",
+      "field": "full_name",
+      "x": 7.0,
+      "y": 38.0,
+      "w": 46.0,
+      "max_lines": 2,
+      "min_font": 12.0,
+      "max_font": 18.0,
+      "align": "left",
+      "color": "text"
+    },
+    {
+      "type": "text",
+      "field": "organization",
+      "x": 7.0,
+      "y": 52.0,
+      "w": 46.0,
+      "max_lines": 1,
+      "min_font": 7.5,
+      "max_font": 9.0,
+      "align": "left",
+      "color": "muted",
+      "collapse_group": "details"
+    },
+    {
+      "type": "text",
+      "field": "team",
+      "x": 7.0,
+      "y": 58.5,
+      "w": 46.0,
+      "max_lines": 1,
+      "min_font": 7.0,
+      "max_font": 8.5,
+      "align": "left",
+      "color": "accent",
+      "optional": true,
+      "collapse_if_empty": true,
+      "collapse_group": "details",
+      "collapse_height": 4.5
+    },
+    {
+      "type": "text",
+      "field": "id_number",
+      "x": 7.0,
+      "y": 64.5,
+      "w": 46.0,
+      "max_lines": 1,
+      "min_font": 6.5,
+      "max_font": 7.5,
+      "align": "left",
+      "color": "muted",
+      "optional": true,
+      "collapse_if_empty": true,
+      "collapse_group": "details",
+      "collapse_height": 4.5
+    },
+    {
+      "type": "qr",
+      "field": "qr_data",
+      "x": 7.0,
+      "y": 72.0,
+      "w": 13.0,
+      "h": 13.0,
+      "color": "text",
+      "background": "background"
+    },
+    {
+      "type": "text",
+      "field": "role",
+      "x": 23.0,
+      "y": 74.0,
+      "w": 30.0,
+      "max_lines": 1,
+      "min_font": 6.5,
+      "max_font": 7.5,
+      "align": "left",
+      "color": "primary",
+      "collapse_group": "details"
+    }
+  ]
+}

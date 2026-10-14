@@ -69,6 +69,7 @@ Only the following **7 named colors** are permitted in layout files:
 * `max_font` (number): Maximum preferred font size in points (`pt`).
 * `align` (string): `"left"`, `"center"`, or `"right"`.
 * `color` (string): One of the 7 allowed named color tokens (e.g. `"text"`, `"muted"`).
+* Optional rows may set `optional: true`, `collapse_if_empty: true`, `collapse_group` (shared by the rows that should move together), and a positive `collapse_height` in mm. A renderer should call `studio.design_tools.prepare_layout(layout, attendee)` before drawing; blank or missing values remove their elements and compact later elements in the same group by the specified height. The original layout is not modified.
 
 #### `photo`
 * `field` (string): Field pointing to image filename or URL (default: `"photo"`).
@@ -206,9 +207,12 @@ Theme JSON files reside in `studio/backend/app/templates/themes/`.
 
 ### 4.1 Theme Structure
 A theme specifies:
-1. `fonts`: Primary body/header font, secondary font, and monospace font.
-2. `colors`: Concrete `#RRGGBB` hex color codes for each of the 6 core named colors (`primary`, `secondary`, `background`, `text`, `muted`, `accent`).
-3. `roles`: Role definitions for `"participant"`, `"organizer"`, and `"mentor"`, including role colors and monochrome differentiation properties.
+1. `fonts`: `heading` and `body` paths to locally installed font files.
+2. `colors`: Concrete `#RRGGBB` hex color codes for all 7 named tokens (`primary`, `secondary`, `background`, `text`, `muted`, `accent`, `role`).
+3. `role_colors`: Per-role `background` and `text` hex colors for `"participant"`, `"organizer"`, and `"mentor"`.
+4. `role_style`: Per-role `badge_shape`, `badge_border`, and explicit `label` values so role identity remains clear in grayscale.
+
+Place the theme fonts under `studio/assets/fonts/`; the exact free Google Fonts files and their licenses are listed in [FONTS.md](../studio/docs/FONTS.md).
 
 ### 4.2 Black and White (Monochrome) Role Distinction
 Because badges may be printed on black-and-white card printers or viewed by color-blind attendees, roles **must never be distinguished solely by color**. Each role specifies:
@@ -234,9 +238,8 @@ Because badges may be printed on black-and-white card printers or viewed by colo
   "version": "1.0.0",
   "description": "High-contrast dark mode theme optimized for developer hackathons",
   "fonts": {
-    "primary": "assets/fonts/Inter-Bold.ttf",
-    "secondary": "assets/fonts/Inter-Regular.ttf",
-    "mono": "assets/fonts/JetBrainsMono-Regular.ttf"
+    "heading": "assets/fonts/SpaceGrotesk-Bold.ttf",
+    "body": "assets/fonts/Inter-Regular.ttf"
   },
   "colors": {
     "primary": "#0085FF",
@@ -246,28 +249,15 @@ Because badges may be printed on black-and-white card printers or viewed by colo
     "muted": "#94A3B8",
     "accent": "#38BDF8"
   },
-  "roles": {
-    "participant": {
-      "role_color": "#0085FF",
-      "text_color": "#FFFFFF",
-      "badge_shape": "pill",
-      "badge_border": "solid",
-      "label": "PARTICIPANT"
-    },
-    "organizer": {
-      "role_color": "#F59E0B",
-      "text_color": "#0F172A",
-      "badge_shape": "shield",
-      "badge_border": "double",
-      "label": "ORGANIZER"
-    },
-    "mentor": {
-      "role_color": "#10B981",
-      "text_color": "#FFFFFF",
-      "badge_shape": "rect",
-      "badge_border": "dashed",
-      "label": "MENTOR"
-    }
+  "role_colors": {
+    "participant": {"background": "#2563EB", "text": "#FFFFFF"},
+    "organizer": {"background": "#F59E0B", "text": "#0F172A"},
+    "mentor": {"background": "#0F766E", "text": "#FFFFFF"}
+  },
+  "role_style": {
+    "participant": {"badge_shape": "pill", "badge_border": "solid", "label": "PARTICIPANT"},
+    "organizer": {"badge_shape": "shield", "badge_border": "double", "label": "ORGANIZER"},
+    "mentor": {"badge_shape": "rect", "badge_border": "dashed", "label": "MENTOR"}
   }
 }
 ```

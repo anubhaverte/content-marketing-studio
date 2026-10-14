@@ -1,0 +1,50 @@
+{
+  "id": "clean_light",
+  "name": "Clean Light",
+  "version": "1.0.0",
+  "description": "Bright, restrained palette for clear and professional attendee cards.",
+  "fonts": {
+    "heading": "assets/fonts/Inter-Bold.ttf",
+    "body": "assets/fonts/Inter-Regular.ttf"
+  },
+  "colors": {
+    "primary": "#1D4ED8",
+    "secondary": "#0F766E",
+    "background": "#FFFFFF",
+    "text": "#172033",
+    "muted": "#475569",
+    "accent": "#B45309",
+    "role": "#334155"
+  },
+  "role_colors": {
+    "participant": {
+      "background": "#DBEAFE",
+      "text": "#172033"
+    },
+    "organizer": {
+      "background": "#FEF3C7",
+      "text": "#172033"
+    },
+    "mentor": {
+      "background": "#DCFCE7",
+      "text": "#172033"
+    }
+  },
+  "role_style": {
+    "participant": {
+      "badge_shape": "pill",
+      "badge_border": "solid",
+      "label": "PARTICIPANT"
+    },
+    "organizer": {
+      "badge_shape": "shield",
+      "badge_border": "double",
+      "label": "ORGANIZER"
+    },
+    "mentor": {
+      "badge_shape": "rect",
+      "badge_border": "dashed",
+      "label": "MENTOR"
+    }
+  }
+}
