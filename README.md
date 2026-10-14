@@ -1,35 +1,103 @@
-# content-marketing-studio
+# Content Marketing Studio card renderer
 
-## QA checks
+This Python module renders event badges from a Design Spec, attendee data, a layout, and a theme. It produces SVG artwork, vector PDFs, PNGs, batch ZIP archives, and print sheets. It also checks cards with automated QA rules. Layout and theme files can be added without changing Python code.
 
-`qa.run_qa` checks measured text overflow and truncation, logo proportions, WCAG text contrast, unintended layout overlaps, missing source fields and fallback use, rendered data matching, and PNG resolution at the requested DPI (300 by default). Results include a check name, severity, person ID, and plain-language message; `qa.report` formats readable output or JSON-friendly dictionaries.
+The stable functions for application integrations are in `export.api`. They accept the normalized `DesignSpec` and `Person` models or decoded JSON objects for those inputs, and return SVG strings, bytes, or JSON-friendly reports. See [docs/formats.md](docs/formats.md) for the exact data shapes.
 
-Run the Phase 4 checks and focused tests:
+## Install on Windows
 
-```powershell
-python -m pytest tests\test_qa.py
-python verify_phase4.py
-```
-
-Expected result: pytest passes. Verification prints each person's issues and a `PASS`/`FAIL` line per check; with the bundled samples it currently reports text overflow for person-003 and low contrast for person-005, then exits nonzero. Placeholder logos and intentional shortening appear as warnings.
-
-## Export
+Install MSYS2 and its UCRT64 GTK runtime. GTK provides the Cairo native DLL needed by CairoSVG:
 
 ```powershell
-python tools\make_test_csv.py
-python -m export.cli --spec specs\temp_spec.json --people sample_data\test_250.csv --format pdf --dpi 300 --out out\batch.zip
-python verify_phase5a.py
+winget install MSYS2.MSYS2
 ```
 
-Expected result: the CLI writes a ZIP with one PDF per valid person and `report.json`, prints totals, skipped rows, and elapsed time; Phase 5A verification prints `PASS` for the export checks.
+Open the **MSYS2 UCRT64** terminal and run:
 
-## Print sheets
+```bash
+pacman -Syu
+pacman -S mingw-w64-ucrt-x86_64-gtk3
+```
+
+In PowerShell, from the project folder, create the Python environment, expose the Cairo DLL directory, install the pinned requirements, and check CairoSVG:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+$env:Path = "C:\msys64\ucrt64\bin;$env:Path"
+python -m pip install -r requirements.txt
+python -c "import cairosvg; print(cairosvg.__version__)"
+```
+
+Expected result: CairoSVG prints `2.9.1` without a Cairo DLL error. Keep the MSYS2 UCRT64 `bin` directory on `PATH` in any shell that runs PDF/PNG exports.
+
+## Install on Linux or macOS
+
+Install Cairo (`sudo apt-get install libcairo2` on Debian/Ubuntu; `brew install cairo` on macOS), then install the pinned Python requirements:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -c "import cairosvg; print(cairosvg.__version__)"
+```
+
+## Run
+
+Render the bundled sample people to SVG, PDF, and PNG:
+
+```powershell
+python render_demo.py
+```
+
+Expected result: output files are written under `sample_output\phase2\`.
+
+Export one PDF per valid person into a ZIP (the `--format` selects the card file format inside the ZIP):
+
+```powershell
+python -m export.cli --spec specs\temp_spec.json --people sample_data\test_250.csv --format pdf --out out\batch.zip
+```
+
+Expected result: `out\batch.zip` contains each exported card and a `report.json`; the CLI prints export totals and elapsed time.
+
+Create a print sheet:
 
 ```powershell
 python -m export.cli --spec specs\temp_spec.json --people sample_data\test_250.csv --sheet A4 --out out\sheet_a4.pdf
-python -m export.cli --spec specs\temp_spec.json --people sample_data\test_250.csv --sheet A3 --no-crop-marks --no-bleed --landscape --out out\sheet_a3_landscape.pdf
-python verify_phase5b.py
-python -m pytest tests\test_print_sheet.py
 ```
 
-Expected result: each command writes a vector PDF, the CLI prints cards per page, page count, and elapsed time, and Phase 5B verification and tests print `PASS` and pass.
+Expected result: a vector PDF is written; the CLI prints cards per page, pages, skipped/failed people, and elapsed time. Use `--sheet A3`, `--no-crop-marks`, `--no-bleed`, or `--landscape` to select other supported sheet settings.
+
+Run the tests and all verification scripts:
+
+```powershell
+pytest
+python verify_all.py
+```
+
+Expected result: pytest passes; `verify_all.py` then runs `verify_phase1.py` through `verify_phase5b.py` in order and prints a `PASS` or `FAIL` summary and total elapsed time.
+
+## Public API
+
+Import the stable functions from `export.api`. Supply a `DesignSpec`/`Person` from `render.spec_adapter` or a decoded JSON object. Settings are dictionaries. Functions do not read the Design Spec file themselves; use `render.spec_adapter.load_design_spec` for file input.
+
+| Function | Inputs | Output |
+|---|---|---|
+| `render_card_svg(spec, person)` | Design Spec and one person | SVG `str` |
+| `render_preview_svg(spec, role)` | Design Spec and supported role | SVG `str` for the bundled sample person |
+| `run_qa_for_card(spec, person)` | Design Spec and one person | list of issue dictionaries |
+| `export_card_bytes(spec, person, settings_dict)` | Design Spec, person, `ExportSettings` dict | SVG/PDF/PNG `bytes` |
+| `export_batch_zip(spec, people, settings_dict)` | Design Spec, people, `ExportSettings` dict | `(ZIP bytes, report dict)` |
+| `export_print_sheet_pdf(spec, people, paper, settings_dict)` | Design Spec, people, `A4`/`A3`, print-sheet settings dict | `(PDF bytes, report dict)` |
+| `load_people_file(path)` | CSV or JSON path | `(Person list, problem list)` |
+| `list_layouts()` | — | sorted layout-name list |
+| `list_themes()` | — | sorted theme-name list |
+
+Invalid inputs raise `ValueError`; underlying OS, native-library, and export errors are reported by the existing functions. Batch and print-sheet reports retain per-person QA details.
+
+## Known limitations
+
+- The ACM and SVNIT marks are labeled placeholders until their real SVG or PNG files are added to `assets/`.
+- The bundled Design Spec intentionally has a null event name, so the card renderer displays its visible `EVENT NAME` placeholder. A null `attendance_url_base` intentionally omits the QR code.
+- Batch export renders and runs QA for each card; a 250-row batch takes several minutes on a typical development machine. The actual time depends on machine and export format.
+- Photos in people files are local paths relative to that input file and must remain beneath its directory.

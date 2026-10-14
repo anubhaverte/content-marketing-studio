@@ -59,3 +59,18 @@ class PrintSheetSettings:
         for name in ("bleed", "crop_marks", "page_labels", "group_by_role"):
             if not isinstance(getattr(self, name), bool):
                 raise ValueError(f"{name} must be a boolean")
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return JSON-friendly print-sheet options."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> PrintSheetSettings:
+        """Build validated print-sheet options from an API-style mapping."""
+        if not isinstance(data, Mapping):
+            raise ValueError("settings must be an object")
+        allowed = {"orientation", "bleed", "crop_marks", "page_labels", "group_by_role"}
+        unexpected = set(data) - allowed
+        if unexpected:
+            raise ValueError(f"unknown print-sheet setting(s): {', '.join(sorted(unexpected))}")
+        return cls(**dict(data))

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,28 @@ class Person:
 
     _data: dict[str, Any]
     _source_file: str | None = None
+
+
+def normalize_design_spec(spec: DesignSpec | Mapping[str, Any]) -> DesignSpec:
+    """Return a DesignSpec from the normalized model or a decoded JSON object."""
+    if isinstance(spec, DesignSpec):
+        return spec
+    if not isinstance(spec, Mapping):
+        raise ValueError("Design Spec input must be a DesignSpec or JSON object")
+    return DesignSpec(dict(spec))
+
+
+def normalize_person(
+    person: Person | Mapping[str, Any],
+    *,
+    source_file: str | Path | None = None,
+) -> Person:
+    """Return a Person from the normalized model or a decoded people object."""
+    if isinstance(person, Person):
+        return person
+    if not isinstance(person, Mapping):
+        raise ValueError("Person input must be a Person or JSON object")
+    return Person(dict(person), str(source_file) if source_file is not None else None)
 
 
 def load_design_spec(path: Path = TEMP_SPEC_PATH) -> DesignSpec:
