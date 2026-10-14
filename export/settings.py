@@ -40,3 +40,22 @@ class ExportSettings:
         if unexpected:
             raise ValueError(f"unknown export setting(s): {', '.join(sorted(unexpected))}")
         return cls(**dict(data))
+
+
+@dataclass(frozen=True)
+class PrintSheetSettings:
+    """Options controlling print-sheet layout and page annotations."""
+
+    orientation: str = "portrait"
+    bleed: bool = True
+    crop_marks: bool = True
+    page_labels: bool = True
+    group_by_role: bool = False
+
+    def __post_init__(self) -> None:
+        """Reject malformed print-sheet options."""
+        if self.orientation not in {"portrait", "landscape"}:
+            raise ValueError("orientation must be 'portrait' or 'landscape'")
+        for name in ("bleed", "crop_marks", "page_labels", "group_by_role"):
+            if not isinstance(getattr(self, name), bool):
+                raise ValueError(f"{name} must be a boolean")

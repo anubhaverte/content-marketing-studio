@@ -22,3 +22,14 @@ python verify_phase5a.py
 ```
 
 Expected result: the CLI writes a ZIP with one PDF per valid person and `report.json`, prints totals, skipped rows, and elapsed time; Phase 5A verification prints `PASS` for the export checks.
+
+## Print sheets
+
+```powershell
+python -m export.cli --spec specs\temp_spec.json --people sample_data\test_250.csv --sheet A4 --out out\sheet_a4.pdf
+python -m export.cli --spec specs\temp_spec.json --people sample_data\test_250.csv --sheet A3 --no-crop-marks --no-bleed --landscape --out out\sheet_a3_landscape.pdf
+python verify_phase5b.py
+python -m pytest tests\test_print_sheet.py
+```
+
+Expected result: each command writes a vector PDF, the CLI prints cards per page, page count, and elapsed time, and Phase 5B verification and tests print `PASS` and pass.
