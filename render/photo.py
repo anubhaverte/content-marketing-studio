@@ -46,13 +46,58 @@ def photo_markup(
     shape: PhotoShape,
     radius: float,
 ) -> tuple[str, tuple[int, int]]:
-    """Embed readable photo bytes, center-cropped without distorting their aspect ratio."""
+    """Embed readable photo bytes, face-cropped to frame aspect ratio using OpenCV."""
+    import io
+    import sys
+    import warnings
+
+    try:
+        from app.assets import photo_utils
+    except ImportError:
+        backend_dir = Path(__file__).resolve().parent.parent / "backend"
+        if str(backend_dir) not in sys.path:
+            sys.path.insert(0, str(backend_dir))
+        from app.assets import photo_utils
+
+    # Verify basic readability and get original dimensions
     with Image.open(path) as image:
-        image_width, image_height = image.size
+        orig_width, orig_height = image.size
         image_format = image.format
         image.verify()
-    if image_width <= 0 or image_height <= 0:
+    if orig_width <= 0 or orig_height <= 0:
         raise ValueError(f"Photo dimensions must be positive: {path}")
+
+    # 1. Run resolution check (300 DPI target for print)
+    if not photo_utils.check_resolution(path, width, height, dpi=300):
+        req_w = round(width * 300 / 25.4)
+        req_h = round(height * 300 / 25.4)
+        warnings.warn(
+            f"Photo '{path.name}' has insufficient resolution ({orig_width}x{orig_height} px) "
+            f"for {width:.1f}x{height:.1f} mm at 300 DPI (expected >= {req_w}x{req_h} px)"
+        )
+
+    # 2. Run blur check
+    try:
+        score = photo_utils.blur_score(path)
+        if score < 100.0:
+            warnings.warn(f"Photo '{path.name}' may be blurry (blur score {score:.1f} < 100)")
+    except Exception as blur_err:
+        warnings.warn(f"Could not compute blur score for '{path.name}': {blur_err}")
+
+    # 3. Perform OpenCV face-aware crop
+    try:
+        cropped_bytes = photo_utils.face_crop(path, width, height)
+        with Image.open(io.BytesIO(cropped_bytes)) as cropped_img:
+            image_width, image_height = cropped_img.size
+            crop_format = cropped_img.format or image_format
+        encoded = base64.b64encode(cropped_bytes).decode("ascii")
+        crop_mode = "face-aware"
+    except Exception as crop_err:
+        warnings.warn(f"Face crop failed for '{path.name}': {crop_err}; falling back to raw photo")
+        image_width, image_height = orig_width, orig_height
+        crop_format = image_format
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        crop_mode = "fallback-center"
 
     scale = max(width / image_width, height / image_height)
     rendered_width = image_width * scale
@@ -60,22 +105,21 @@ def photo_markup(
     image_x = x + (width - rendered_width) / 2
     image_y = y + (height - rendered_height) / 2
     clip_id = f"{element_id}-clip"
-    media_type = Image.MIME.get(image_format or "")
+    media_type = Image.MIME.get(crop_format or "")
     if media_type is None:
-        raise ValueError(f"Unsupported photo format: {image_format or path.suffix}")
+        raise ValueError(f"Unsupported photo format: {crop_format or path.suffix}")
     clip_shape = (
         f'<circle cx="{x + width / 2:g}" cy="{y + height / 2:g}" r="{min(width, height) / 2:g}"/>'
         if shape == "circle"
         else f'<rect x="{x:g}" y="{y:g}" width="{width:g}" height="{height:g}" rx="{radius:g}"/>'
     )
-    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
     return (
         f'<defs><clipPath id="{clip_id}">{clip_shape}</clipPath></defs>'
-        f'<image id="{escape(element_id)}" data-photo-status="embedded" '
-        f'data-source-size="{image_width} {image_height}" x="{image_x:g}" y="{image_y:g}" '
+        f'<image id="{escape(element_id)}" data-photo-status="embedded" data-crop-mode="{crop_mode}" '
+        f'data-source-size="{orig_width} {orig_height}" x="{image_x:g}" y="{image_y:g}" '
         f'width="{rendered_width:g}" height="{rendered_height:g}" preserveAspectRatio="xMidYMid meet" '
         f'clip-path="url(#{clip_id})" href="data:{media_type};base64,{encoded}"/>',
-        (image_width, image_height),
+        (orig_width, orig_height),
     )
 
 

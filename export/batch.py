@@ -26,10 +26,14 @@ def export_batch(
     out_path: str | Path | None = None,
     *,
     skipped_rows: Sequence[dict[str, int | str]] = (),
+    layout: dict[str, Any] | None = None,
+    theme: dict[str, Any] | None = None,
 ) -> bytes:
     """Export each person independently and package results plus a JSON report."""
-    layout = load_layout(spec_adapter.spec_layout(spec))
-    theme = load_theme(spec_adapter.spec_theme(spec))
+    if layout is None:
+        layout = load_layout(spec_adapter.spec_layout(spec))
+    if theme is None:
+        theme = load_theme(spec_adapter.spec_theme(spec))
     extension = settings.format
     records: list[dict[str, object]] = []
     payloads: list[tuple[str, bytes]] = []
@@ -40,11 +44,11 @@ def export_batch(
         person_id = _person_id(person)
         issue_dicts: list[dict[str, str | None]] = []
         try:
-            svg = _render_for_qa(spec, person)
+            svg = _render_for_qa(spec, person, layout=layout, theme=theme)
             issues = run_qa(spec, person, svg, layout, theme)
             issue_dicts = issues_to_dict(issues)
             qa_issue_count += len(issue_dicts)
-            exported = export_card(spec, person, settings)
+            exported = export_card(spec, person, settings, layout=layout, theme=theme)
             role = spec_adapter.person_role(person)
             filename = _filename(person_id, role, extension, used_names)
             payloads.append((filename, exported))
@@ -97,6 +101,9 @@ def export_batch_pdf(
     spec: spec_adapter.DesignSpec,
     people: Sequence[spec_adapter.Person],
     settings: ExportSettings,
+    *,
+    layout: dict[str, Any] | None = None,
+    theme: dict[str, Any] | None = None,
 ) -> bytes:
     """Return one vector PDF page per person in the input sequence."""
     writer = PdfWriter()
@@ -112,6 +119,8 @@ def export_batch_pdf(
                     orientation=settings.orientation,
                     bleed=settings.bleed,
                 ),
+                layout=layout,
+                theme=theme,
             )
             writer.append(PdfReader(io.BytesIO(card_pdf)))
         except Exception as error:
@@ -121,8 +130,17 @@ def export_batch_pdf(
     return output.getvalue()
 
 
-def _render_for_qa(spec: spec_adapter.DesignSpec, person: spec_adapter.Person) -> str:
+def _render_for_qa(
+    spec: spec_adapter.DesignSpec,
+    person: spec_adapter.Person,
+    *,
+    layout: dict[str, Any] | None = None,
+    theme: dict[str, Any] | None = None,
+) -> str:
     """Render a card once for QA before its output export."""
+    if layout is not None and theme is not None:
+        from render.renderer import _render
+        return _render(spec, person, layout, theme)
     from render.renderer import render_card
 
     return render_card(spec, person)

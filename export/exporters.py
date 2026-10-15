@@ -21,9 +21,16 @@ def export_card(
     spec: spec_adapter.DesignSpec,
     person: spec_adapter.Person,
     settings: ExportSettings,
+    *,
+    layout: dict[str, Any] | None = None,
+    theme: dict[str, Any] | None = None,
 ) -> bytes:
     """Render and export one card in the requested format."""
-    svg = render_card(spec, person)
+    if layout is not None and theme is not None:
+        from render.renderer import _render
+        svg = _render(spec, person, layout, theme)
+    else:
+        svg = render_card(spec, person)
     svg = _configure_svg(svg, spec, settings)
     if settings.format == "svg":
         return svg.encode("utf-8")

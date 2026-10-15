@@ -2,6 +2,7 @@
 from app.brief.extract import (
     BriefProvider,
     FakeBriefProvider,
+    GeminiGenaiProvider,
     GeminiHttpProvider,
     deterministic_fallback_extraction,
     extract_brief,
@@ -14,6 +15,7 @@ __all__ = [
     "Brief",
     "BriefProvider",
     "FakeBriefProvider",
+    "GeminiGenaiProvider",
     "GeminiHttpProvider",
     "build_questions",
     "deterministic_fallback_extraction",
