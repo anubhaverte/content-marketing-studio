@@ -170,8 +170,9 @@ def test_deterministic_fallback_never_hallucinates_details():
 # API integration tests: POST /brief
 # ---------------------------------------------------------------------------
 
-def test_api_brief_default_contract():
+def test_api_brief_default_contract(monkeypatch):
     """POST /brief preserves default mock: true behavior when offline."""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     payload = {"text": "Hackathon 2026 at SVNIT Surat with participants and organizers"}
     response = client.post("/brief", json=payload)
 
@@ -204,3 +205,144 @@ def test_gemini_http_provider_missing_key_raises_value_error():
     provider = GeminiHttpProvider(api_key="")
     with pytest.raises(ValueError, match="GEMINI_API_KEY is not configured"):
         provider.generate_brief_json("sample text")
+
+
+# ---------------------------------------------------------------------------
+# Unit & integration tests: GeminiGenaiProvider (official SDK)
+# ---------------------------------------------------------------------------
+
+def test_gemini_genai_provider_missing_key_raises_value_error(monkeypatch):
+    """GeminiGenaiProvider raises ValueError when instantiated without an API key."""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    from app.brief.extract import GeminiGenaiProvider
+    with pytest.raises(ValueError, match="GEMINI_API_KEY is not configured"):
+        GeminiGenaiProvider(api_key="")
+
+
+def test_gemini_genai_provider_mock_successful_generation(monkeypatch):
+    """GeminiGenaiProvider calls google-genai client and returns structured JSON."""
+    from unittest.mock import MagicMock
+    from app.brief.extract import GeminiGenaiProvider
+
+    mock_response = MagicMock()
+    mock_response.text = json.dumps({
+        "design_type": "id_card",
+        "event_name": "ACM Tech Con 2026",
+        "dates": "Nov 15-16, 2026",
+        "venue": "Convention Center",
+        "roles": ["participant", "speaker"],
+    })
+
+    provider = GeminiGenaiProvider(api_key="mock-api-key")
+    provider._client.models.generate_content = MagicMock(return_value=mock_response)
+
+    result_json = provider.generate_brief_json("ACM Tech Con on Nov 15-16 at Convention Center for participants and speakers")
+    assert "ACM Tech Con 2026" in result_json
+
+    brief, is_fallback = extract_brief("any text", provider=provider)
+    assert is_fallback is False
+    assert brief.event_name == "ACM Tech Con 2026"
+    assert brief.dates == "Nov 15-16, 2026"
+    assert brief.roles == ["participant", "speaker"]
+
+
+def test_gemini_genai_provider_auth_error_triggers_fallback():
+    """Authentication errors (401/403) in GeminiGenaiProvider trigger deterministic fallback safely."""
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from app.brief.extract import GeminiGenaiProvider
+
+    provider = GeminiGenaiProvider(api_key="invalid-api-key")
+    provider._client.models.generate_content = MagicMock(
+        side_effect=errors.APIError(403, {"error": {"message": "API key not valid", "status": "PERMISSION_DENIED"}})
+    )
+
+    brief, is_fallback = extract_brief("TechFest organizers in landscape", provider=provider)
+    assert is_fallback is True
+    assert brief.event_name is None
+    assert brief.roles == ["organizer"]
+    assert brief.orientation == "landscape"
+
+
+def test_gemini_genai_provider_quota_rate_limit_triggers_fallback():
+    """Rate limit or quota errors (429) trigger deterministic fallback safely."""
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from app.brief.extract import GeminiGenaiProvider
+
+    provider = GeminiGenaiProvider(api_key="mock-key")
+    provider._client.models.generate_content = MagicMock(
+        side_effect=errors.APIError(429, {"error": {"message": "Quota exceeded", "status": "RESOURCE_EXHAUSTED"}})
+    )
+
+    brief, is_fallback = extract_brief("Hackathon participants in minimal style", provider=provider)
+    assert is_fallback is True
+    assert brief.style_hint == "minimal"
+    assert "participant" in brief.roles
+
+
+def test_gemini_genai_provider_timeout_triggers_fallback():
+    """Timeout during SDK generation triggers deterministic fallback safely."""
+    from unittest.mock import MagicMock
+    from app.brief.extract import GeminiGenaiProvider
+
+    provider = GeminiGenaiProvider(api_key="mock-key")
+    provider._client.models.generate_content = MagicMock(
+        side_effect=TimeoutError("Request timed out after 15 seconds")
+    )
+
+    brief, is_fallback = extract_brief("Conference with mentors and lanyard hole", provider=provider)
+    assert is_fallback is True
+    assert "mentor" in brief.roles
+    assert brief.lanyard_hole is True
+
+
+def test_gemini_genai_provider_empty_response_triggers_fallback():
+    """Empty or whitespace response from model triggers fallback safely."""
+    from unittest.mock import MagicMock
+    from app.brief.extract import GeminiGenaiProvider
+
+    mock_response = MagicMock()
+    mock_response.text = "   "
+
+    provider = GeminiGenaiProvider(api_key="mock-key")
+    provider._client.models.generate_content = MagicMock(return_value=mock_response)
+
+    brief, is_fallback = extract_brief("Event with judges in portrait", provider=provider)
+    assert is_fallback is True
+    assert brief.orientation == "portrait"
+    assert "judge" in brief.roles
+
+
+def test_api_brief_endpoint_live_gemini_success_sets_mock_false(monkeypatch):
+    """When live Gemini extraction succeeds, POST /brief returns mock: false and populated fields."""
+    from unittest.mock import MagicMock
+    from app.brief.extract import GeminiGenaiProvider
+
+    mock_response = MagicMock()
+    mock_response.text = json.dumps({
+        "design_type": "id_card",
+        "event_name": "NIT Surat Annual Hackathon 2026",
+        "tagline": "Innovate Every Day",
+        "dates": "December 5-7, 2026",
+        "venue": "SVNIT Central Hall",
+        "roles": ["participant", "organizer", "mentor"],
+        "fields_to_show": ["name", "role", "id", "team", "photo", "qr"],
+    })
+
+    # Set mock key and mock the SDK client call
+    monkeypatch.setenv("GEMINI_API_KEY", "real-mock-key-for-test")
+    monkeypatch.setattr(
+        "google.genai.models.Models.generate_content",
+        MagicMock(return_value=mock_response),
+    )
+
+    response = client.post("/brief", json={"text": "Annual Hackathon at SVNIT Central Hall on Dec 5-7"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mock"] is False
+    assert data["brief"]["event_name"] == "NIT Surat Annual Hackathon 2026"
+    assert data["brief"]["dates"] == "December 5-7, 2026"
+    assert data["brief"]["venue"] == "SVNIT Central Hall"
+    assert "event_name" not in data["missing"]
+

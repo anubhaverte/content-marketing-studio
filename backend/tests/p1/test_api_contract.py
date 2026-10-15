@@ -123,8 +123,9 @@ def test_spec_patch_invalid():
     assert "detail" in response.json()
 
 
-def test_brief_mock():
+def test_brief_mock(monkeypatch):
     """POST /brief returns 200 OK with mock questions."""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     response = client.post("/brief", json={"text": "Hackathon 2026 at SVNIT Surat"})
     assert response.status_code == 200
     data = response.json()
@@ -187,7 +188,7 @@ def test_drafts_generation():
 
 
 def test_render_preview_stub():
-    """POST /render/preview returns 501 Not Implemented (P2 stub)."""
+    """POST /render/preview returns 200 with rendered SVG and QA issues."""
     layout = get_layout("classic")
     theme = get_theme("clean_light")
     spec = merge_design_spec(layout, theme)
@@ -197,5 +198,12 @@ def test_render_preview_stub():
         "person": {"name": "Test User", "role": "participant"},
     }
     response = client.post("/render/preview", json=payload)
-    assert response.status_code == 501
-    assert "Phase 2" in response.json()["detail"]
+    assert response.status_code == 200
+    data = response.json()
+    assert "svg" in data
+    assert isinstance(data["svg"], str) and len(data["svg"]) > 0
+    assert "<svg" in data["svg"]
+    assert "Test User" in data["svg"]
+    assert "qa_issues" in data
+    assert isinstance(data["qa_issues"], list)
+

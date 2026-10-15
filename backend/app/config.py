@@ -15,7 +15,8 @@ THEMES = TEMPLATES / "themes"
 OUTPUT = ROOT / "output"
 SAMPLE_DATA = ROOT / "sample_data"
 
-# Load backend/.env if it exists (holds GEMINI_API_KEY from Phase 5)
+# Load backend/.env or root .env if it exists (holds GEMINI_API_KEY from Phase 5)
 load_dotenv(BACKEND / ".env")
+load_dotenv(ROOT / ".env")
 
 APP_VERSION = "0.0.1"
