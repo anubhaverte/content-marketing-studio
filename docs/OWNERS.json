@@ -4,6 +4,7 @@
   {"path": ".gitignore", "owner": "p1"},
   {"path": ".vscode/", "owner": "p1"},
   {"path": "AGENTS.md", "owner": "p1"},
+  {"path": "EXECUTION_STATUS.md", "owner": "p1"},
   {"path": "GEMINI.md", "owner": "p1"},
   {"path": "README.md", "owner": "p1"},
   {"path": "assets/", "owner": "p4"},
