@@ -7,6 +7,7 @@ import base64
 import io
 import json
 import sys
+import os
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,13 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
+
+# Propagate Streamlit secrets to environment variables if available
+try:
+    if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+        os.environ["GEMINI_API_KEY"] = str(st.secrets["GEMINI_API_KEY"]).strip()
+except Exception:
+    pass
 
 # Backend modules
 from app.brief.extract import extract_brief
