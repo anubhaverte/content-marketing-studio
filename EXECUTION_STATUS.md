@@ -788,8 +788,35 @@ A full filesystem search across the repository discovered exactly 6 layout and t
 - **Production Build:** `npm run build` -> Compiled successfully, zero lint/type errors.
 - **Backend Health Check:** `GET http://localhost:8000/health` -> HTTP 200 `{"status": "ok", "version": "0.0.1"}`.
 - **Frontend Dev Server:** Running on `http://localhost:3000` via Next.js dev server.
-- **Frontend HTTP Probe:** `GET http://localhost:3000` -> HTTP 200 OK.
-- **Backend Test Suite:** `pytest` -> **201 passed, 0 failed, 103 warnings in 26.22s**.
+---
+
+## Phase 7 — Zero-Config Cloud Deployment (Streamlit Community Cloud)
+
+**Status:** ✅ **PASS** (Single-file Streamlit pipeline with direct backend integration)  
+**Date:** 2026-10-15  
+**Active Branch:** `main`  
+**Git Working Tree:** Clean  
+
+### 1. Implementation Summary
+
+1. **`streamlit_app.py` (Owned by Person 1):**
+   - Self-contained web app running the full Card Studio engine on free cloud hosting.
+   - **Step 1 (Brief):** Plain-English brief input, Gemini AI extraction with offline fallback, missing information detection, and follow-up Q&A.
+   - **Step 2 (Attendee Data):** CSV roster upload with validation metrics (missing names, invalid roles, duplicate IDs) and 4-attendee sample roster loader.
+   - **Step 3 (Design Drafts):** 3 candidate drafts from catalog, theme color swatches, and draft selection.
+   - **Step 4 (Badge Preview):** Real-time SVG rendering, attendee switching, print guides toggle (bleed/trim/safe), and automated QA diagnostics checklist.
+   - **Step 5 (Batch Export):** Collated multi-page PDF (1 page/attendee at 300 DPI), high-res PNG ZIP, and SVG ZIP with direct browser downloads.
+
+2. **`packages.txt` (Owned by Person 1):**
+   - Specifies Debian Linux system libraries for Streamlit Community Cloud: `libcairo2`, `libgl1-mesa-glx`, `libglib2.0-0` to power CairoSVG and OpenCV.
+
+3. **`requirements.txt` (Owned by Person 1):**
+   - Clean runtime dependency list with Streamlit, CairoSVG, OpenCV, Pillow, pypdf, google-genai, pydantic, and jinja2.
+
+### 2. Verification
+- **Test Suite:** 208/208 tests passed (`backend/tests/` + `tests/`).
+- **Ownership Verification:** `check_ownership.py --owner p1` -> 100% OK.
+
 
 
 
