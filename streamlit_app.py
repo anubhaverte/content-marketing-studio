@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import re
 import sys
 import os
 from pathlib import Path
@@ -45,7 +46,108 @@ from qa.report import issues_to_dict
 from render import spec_adapter
 from render.loaders import load_layout
 from render.renderer import _render
-from app.api.routes_render import _adapt_spec, _adapt_theme_dict, _adapt_person
+
+DEFAULT_FALLBACK_ROLES = {
+    "participant": "#1F6FEB",
+    "organizer": "#D9480F",
+    "mentor": "#2F9E44",
+    "volunteer": "#7E22CE",
+}
+
+
+def _adapt_theme_dict(spec: Any) -> dict[str, Any]:
+    theme_model = spec.theme
+    colors_model = theme_model.colors
+    text_on_primary = getattr(colors_model, "text_on_primary", None) or "#FFFFFF"
+
+    heading_font = theme_model.fonts.heading
+    body_font = theme_model.fonts.body
+    fonts_dict = {
+        "heading": [heading_font, "Arial", "Segoe UI"] if isinstance(heading_font, str) else list(heading_font),
+        "body": [body_font, "Arial", "sans-serif"] if isinstance(body_font, str) else list(body_font),
+    }
+
+    role_colors = dict(theme_model.role_colors)
+    for role, default_col in DEFAULT_FALLBACK_ROLES.items():
+        if role not in role_colors or not re.fullmatch(r"#[0-9A-Fa-f]{6}", str(role_colors[role])):
+            role_colors[role] = default_col
+
+    colors_dict = {
+        "primary": colors_model.primary,
+        "secondary": colors_model.secondary,
+        "background": colors_model.background,
+        "accent": colors_model.accent,
+        "text": colors_model.text,
+        "text_on_primary": text_on_primary,
+    }
+
+    return {
+        "name": theme_model.name,
+        "colors": colors_dict,
+        "role_colors": role_colors,
+        "fonts": fonts_dict,
+        "_source_file": f"theme {theme_model.name}",
+    }
+
+
+def _adapt_spec(spec: Any) -> spec_adapter.DesignSpec:
+    logos = set()
+    if spec.brand and spec.brand.logos:
+        for k in spec.brand.logos.keys():
+            k_lower = k.lower()
+            if "acm" in k_lower:
+                logos.add("acm")
+            if "svnit" in k_lower:
+                logos.add("svnit")
+            logos.add(k)
+    else:
+        logos = {"acm", "svnit"}
+
+    return spec_adapter.DesignSpec({
+        "layout": spec.layout_name.lower(),
+        "theme": spec.theme_name.lower(),
+        "card": {
+            "width_mm": spec.page.width_mm,
+            "height_mm": spec.page.height_mm,
+            "bleed_mm": spec.page.bleed_mm,
+            "safe_mm": spec.page.safe_mm,
+        },
+        "event": {
+            "name": spec.event.event_name,
+            "tagline": spec.event.tagline,
+            "venue": spec.event.venue,
+            "date": spec.event.dates,
+        },
+        "logos": sorted(logos),
+        "attendance_url_base": None,
+    })
+
+
+def _adapt_person(person: Any) -> spec_adapter.Person:
+    extra = getattr(person, "extra", {}) or {}
+    raw_photo = getattr(person, "photo", None) or extra.get("photo")
+    if isinstance(raw_photo, str):
+        cleaned_photo = raw_photo.strip().replace("\\", "/")
+        if cleaned_photo.startswith("sample_data/"):
+            cleaned_photo = cleaned_photo[len("sample_data/"):]
+    else:
+        cleaned_photo = None
+
+    raw_id = getattr(person, "id", None) or extra.get("id")
+    raw_team = getattr(person, "team", None) or extra.get("team")
+    raw_email = getattr(person, "email", None) or extra.get("email")
+    raw_qr = getattr(person, "qr_url", None) or extra.get("qr_url")
+
+    data = {
+        "name": getattr(person, "name", ""),
+        "role": getattr(person, "role", "participant"),
+        "id": raw_id,
+        "photo": cleaned_photo,
+        "team": raw_team,
+        "email": raw_email,
+        "qr_url": raw_qr,
+    }
+    return spec_adapter.Person(data, source_file="streamlit_session")
 
 # Page configuration
 st.set_page_config(
