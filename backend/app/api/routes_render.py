@@ -14,7 +14,21 @@ from fastapi.responses import JSONResponse
 
 from app.api.models import RenderPreviewRequest, RenderPreviewResponse
 from app.api.render_models import RenderBatchRequest, RenderBatchResponse
-from app.config import ROOT
+from app.config import LAYOUTS, ROOT
+from app.render.svg_builder import build_svg
+from app.spec.loader import SpecError, load_layout as load_spec_layout
+from app.spec.schema import (
+    CircleEl,
+    GradientFill,
+    LineEl,
+    LogoEl,
+    PhotoEl,
+    QrEl,
+    RectEl,
+    RoleBadgeEl,
+    SvgAssetEl,
+    TextEl,
+)
 
 # Ensure repository root is in sys.path for render and qa modules
 if str(ROOT) not in sys.path:
@@ -180,60 +194,145 @@ def render_preview(payload: Optional[RenderPreviewRequest] = None) -> Any:
     spec = payload.spec
     person = payload.person
 
-    # 1. Load layout
+    # Confirm the selected template still exists; the merged DesignSpec carries
+    # the editable elements used for rendering.
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", spec.layout_name):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Layout '{spec.layout_name}' cannot be loaded: invalid layout name",
+        )
     try:
-        layout_dict = load_layout(spec.layout_name.lower())
-    except Exception as err:
+        layout = load_spec_layout(LAYOUTS / f"{spec.layout_name}.json")
+    except SpecError as err:
         raise HTTPException(
             status_code=422,
             detail=f"Layout '{spec.layout_name}' cannot be loaded: {err}",
-        )
+        ) from err
+    if layout.name != spec.layout_name:
+        raise HTTPException(status_code=422, detail="Loaded layout name does not match the DesignSpec")
 
-    # 2. Adapt theme, spec, and person
     try:
-        theme_dict = _adapt_theme_dict(spec)
-        spec_adapted = _adapt_spec(spec)
-        person_adapted = _adapt_person(person)
-    except Exception as err:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Specification adaptation failed: {err}",
-        )
-
-    # 3. Render SVG
-    try:
-        svg = _render(spec_adapted, person_adapted, layout_dict, theme_dict)
+        svg = build_svg(spec, person, debug_guides=payload.debug_guides)
     except Exception as err:
         raise HTTPException(
             status_code=422,
             detail=f"Rendering failed: {err}",
-        )
+        ) from err
 
-    # 4. Inject debug guides if requested
-    if payload.debug_guides:
-        width, height, trim_x, trim_y, trim_width, trim_height = spec_adapter.canvas_geometry(spec_adapted)
-        safe = spec_adapter.safe_inset(spec_adapted)
-        guides = (
-            f'<g id="debug-guides" stroke-dasharray="1 1" fill="none">\n'
-            f'  <rect id="guide-bleed" x="0" y="0" width="{width:g}" height="{height:g}" stroke="#E11D48" stroke-width="0.3"/>\n'
-            f'  <rect id="guide-trim" x="{trim_x:g}" y="{trim_y:g}" width="{trim_width:g}" height="{trim_height:g}" stroke="#10B981" stroke-width="0.3"/>\n'
-            f'  <rect id="guide-safe" x="{trim_x + safe:g}" y="{trim_y + safe:g}" width="{trim_width - 2 * safe:g}" height="{trim_height - 2 * safe:g}" stroke="#3B82F6" stroke-width="0.3"/>\n'
-            f'</g>'
-        )
-        if "</svg>" in svg:
-            svg = svg.replace("</svg>", f"{guides}\n</svg>")
-
-    # 5. Run automatic QA checks
-    try:
-        qa_issues = run_qa(spec_adapted, person_adapted, svg, layout_dict, theme_dict)
-        issues_list = issues_to_dict(qa_issues)
-    except Exception as err:
-        issues_list = [{"check": "qa_pipeline", "severity": "warning", "person_id": person.id, "message": str(err)}]
+    qa_issues = run_qa(
+        _adapt_spec(spec),
+        _adapt_person(person),
+        svg,
+        _qa_layout(spec, svg),
+        _qa_theme(spec),
+    )
+    issues_list = issues_to_dict(qa_issues)
+    if person.role not in spec.theme.role_colors:
+        issues_list.append({
+            "check": "role_configuration",
+            "severity": "warning",
+            "person_id": person.id,
+            "message": f"Role {person.role!r} has no theme role color; the primary color is used.",
+        })
 
     return RenderPreviewResponse(
         svg=svg,
         qa_issues=issues_list,
     )
+
+
+def _qa_layout(spec: Any, svg: str) -> dict[str, Any]:
+    """Adapt canonical elements to the established QA checker geometry."""
+    from xml.etree import ElementTree
+
+    root = ElementTree.fromstring(svg)
+    rendered_by_id = {
+        node.get("id"): node
+        for node in root.iter()
+        if node.get("id") is not None
+    }
+    elements = []
+    for index, element in enumerate(spec.elements):
+        element_id = element.id or f"{element.type}-{index}"
+        item: dict[str, Any] = {
+            "id": element_id,
+            "type": element.type,
+        }
+        if isinstance(element, RectEl):
+            item.update(_qa_box(element.x, element.y, element.w, element.h))
+            item["color"] = element.fill if isinstance(element.fill, str) else "background"
+            item["role_area"] = element.fill == "role"
+            item["background_only"] = True
+            if isinstance(element.fill, GradientFill):
+                item["color"] = element.fill.stops[0][1]
+        elif isinstance(element, TextEl):
+            line_height = element.max_font * 0.352778 * 1.2
+            box_height = line_height * element.max_lines
+            x = {
+                "left": element.x,
+                "center": element.x + element.w / 2,
+                "right": element.x + element.w,
+            }[element.align]
+            item.update(_qa_box(x, element.y + box_height / 2, element.w, box_height))
+            item.update({
+                "data": f"person.{element.field}" if element.field else element.value,
+                "max_width": element.w,
+                "alignment": {"left": "start", "center": "middle", "right": "end"}[element.align],
+                "color": element.color,
+            })
+        elif isinstance(element, LogoEl):
+            node = rendered_by_id.get(element_id)
+            x, y = float(node.get("x", element.x)), float(node.get("y", element.y))
+            width = float(node.get("width", element.w))
+            height = float(node.get("height", element.h or element.w))
+            item.update(_qa_box(x, y, width, height))
+            item["data"] = element.src
+        elif isinstance(element, (PhotoEl, RoleBadgeEl, QrEl, SvgAssetEl)):
+            item.update(_qa_box(element.x, element.y, element.w, element.h))
+            if isinstance(element, PhotoEl):
+                item["color"] = "secondary"
+                item["data"] = f"person.{element.field}"
+            elif isinstance(element, RoleBadgeEl):
+                item["data"] = f"person.{element.field}"
+            elif isinstance(element, QrEl):
+                item["data"] = f"person.{element.field}"
+        elif isinstance(element, LineEl):
+            item.update(_qa_box(
+                min(element.x1, element.x2),
+                min(element.y1, element.y2),
+                abs(element.x2 - element.x1),
+                abs(element.y2 - element.y1),
+            ))
+        elif isinstance(element, CircleEl):
+            item.update(_qa_box(
+                element.cx - element.r,
+                element.cy - element.r,
+                element.r * 2,
+                element.r * 2,
+            ))
+        elements.append(item)
+    return {"elements": elements}
+
+
+def _qa_box(x: float, y: float, width: float, height: float) -> dict[str, Any]:
+    return {
+        "position": {"x": x, "y": y},
+        "size": {"width": width, "height": height},
+    }
+
+
+def _qa_theme(spec: Any) -> dict[str, Any]:
+    """Adapt theme tokens without inventing colors for QA."""
+    colors = spec.theme.colors.model_dump()
+    colors["text_on_primary"] = "#FFFFFF"
+    return {
+        "colors": colors,
+        "role_colors": dict(spec.theme.role_colors),
+        "fonts": {
+            "heading": [spec.theme.fonts.heading],
+            "body": [spec.theme.fonts.body],
+        },
+    }
 
 
 @router.post("/batch")

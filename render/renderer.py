@@ -102,6 +102,7 @@ def _render(
         "family": f'"{selected_family}"',
         "font_families": font_families,
         "font_path": font_path,
+        "font_faces": {},
         "requested_logos": requested_logos,
         "layout_file": layout_file,
         "theme_file": theme_file,
@@ -147,6 +148,7 @@ def _render(
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
         f'{root_attributes} {" ".join(logo_statuses)}>\n'
+        + _font_face_style(context["font_faces"])
         + "\n".join(body)
         + "\n</svg>"
     )
@@ -188,6 +190,7 @@ def _render_text(element: dict[str, Any], context: dict[str, Any]) -> str:
     max_width = min(width, _positive_layout_number(element, "max_width", context["layout_file"]))
     max_lines = _positive_layout_integer(element, "max_lines", context["layout_file"])
     font_family, font_path = find_font_file(context["font_families"], str(weight))
+    context["font_faces"][(font_family, str(weight))] = font_path
     line_capacity = max(1, int(height / (min_font_size * 1.2)))
     result = fit_text(
         value,
@@ -366,11 +369,13 @@ def _render_role_details(role_area: dict[str, Any], context: dict[str, Any]) -> 
         context["role_color"], context["colors"]
     )
     label_size = _positive_layout_number(label, "font_size", context["layout_file"])
+    label_family, label_font_path = find_font_file(context["font_families"], "700")
+    context["font_faces"][(label_family, "700")] = label_font_path
     label_markup = (
         f'<text id="role-label" x="{_num(label_x)}" y="{_num(label_y)}" '
         f'data-theme-color="{_attr(label_color_name)}" '
         f'text-anchor="{_attr(label.get("alignment", "middle"))}" '
-        f'font-family="{_attr(context["family"])}" font-size="{_num(label_size)}" '
+        f'font-family="{_attr(label_family)}" font-size="{_num(label_size)}" '
         f'font-weight="700" fill="{_attr(label_color)}">{_text(label_text)}</text>'
     )
     shape = ROLE_CUES[context["role"]]
@@ -470,12 +475,27 @@ def _layout_number(data: dict[str, Any], field: str, layout_file: str) -> float:
 
 
 def _find_asset(name: str) -> Path | None:
-    """Find SVG or PNG logo data under the shared assets directory."""
-    for suffix in (".svg", ".png"):
-        path = ASSETS_DIR / f"{name}{suffix}"
-        if path.is_file():
-            return path
+    """Find a logo in the shared assets directory without flattening its path."""
+    asset_name = {"acm": "acm_nitsurat"}.get(name, name)
+    for directory in (ASSETS_DIR / "logos", ASSETS_DIR):
+        for suffix in (".svg", ".png"):
+            path = directory / f"{asset_name}{suffix}"
+            if path.is_file():
+                return path
     return None
+
+
+def _font_face_style(font_faces: dict[tuple[str, str], Path]) -> str:
+    """Embed the exact font files used for measuring text in the SVG."""
+    rules = []
+    for (family, weight), path in sorted(font_faces.items()):
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        rules.append(
+            f'@font-face{{font-family:"{_attr(family)}";font-style:normal;'
+            f'font-weight:{_attr(weight)};src:url("data:font/ttf;base64,{encoded}") '
+            'format("truetype")}}'
+        )
+    return f"<style>{''.join(rules)}</style>\n" if rules else ""
 
 
 def _asset_ratio(path: Path) -> float:

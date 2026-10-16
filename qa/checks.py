@@ -169,17 +169,28 @@ def _check_logo_aspect_ratio(
     issues = []
     for logo in root.iter():
         logo_name = logo.get("id", "")
-        if not logo_name.startswith("logo-") or logo.get("data-logo-status") is None:
+        source_name = logo.get("data-logo-name") or logo_name.removeprefix("logo-")
+        if (
+            not logo_name.startswith("logo-")
+            and logo.get("data-logo-name") is None
+        ) or logo.get("data-logo-status") is None:
             continue
         if logo.get("data-logo-status") == "placeholder":
             issues.append(Issue(
                 "logo_aspect_ratio", "warning", person_id,
-                f"Logo {logo_name.removeprefix('logo-')} is a placeholder; an aspect ratio cannot be verified (fallback was used).",
+                f"Logo {source_name} is a placeholder; an aspect ratio cannot be verified (fallback was used).",
             ))
             continue
-        path = _find_asset(logo_name.removeprefix("logo-"))
+        path = _find_asset(source_name)
         if path is None:
             raise FileNotFoundError(f"Source asset for embedded {logo_name} was not found under {ASSETS_DIR}")
+        if logo.get("data-logo-fit") == "contain":
+            if logo.get("preserveAspectRatio") != "xMidYMid meet":
+                issues.append(Issue(
+                    "logo_aspect_ratio", "error", person_id,
+                    f"Logo {source_name} does not preserve its source aspect ratio.",
+                ))
+            continue
         width = float(logo.get("width", "0"))
         height = float(logo.get("height", "0"))
         if width <= 0 or height <= 0:
@@ -260,7 +271,15 @@ def _check_overlap(
     for index, (first, first_box) in enumerate(boxes):
         for second, second_box in boxes[index + 1:]:
             first_id, second_id = str(first.get("id", "element")), str(second.get("id", "element"))
+            if first.get("background_only") or second.get("background_only"):
+                continue
             if frozenset((first_id, second_id)) in ALLOWED_OVERLAP_PAIRS:
+                continue
+            if (
+                first.get("type") == "rect" and _contains_box(first_box, second_box)
+            ) or (
+                second.get("type") == "rect" and _contains_box(second_box, first_box)
+            ):
                 continue
             if _boxes_overlap(first_box, second_box):
                 issues.append(Issue(
@@ -268,6 +287,21 @@ def _check_overlap(
                     f"{first_id} overlaps {second_id}; their layout boxes intersect unintentionally.",
                 ))
     return issues
+
+
+def _contains_box(
+    outer: tuple[float, float, float, float],
+    inner: tuple[float, float, float, float],
+) -> bool:
+    """Return whether a positive-area box is fully contained by another."""
+    return (
+        inner[0] >= outer[0]
+        and inner[1] >= outer[1]
+        and inner[2] <= outer[2]
+        and inner[3] <= outer[3]
+        and inner[0] < inner[2]
+        and inner[1] < inner[3]
+    )
 
 
 def _check_empty_fields(
@@ -302,7 +336,10 @@ def _check_empty_fields(
             "ID is missing; the attendance QR fallback was to omit the code.",
         ))
     photo_path = spec_adapter.person_photo_path(person)
-    photo = root.find(f".//*[@id='person-photo']")
+    photo = next(
+        (node for node in root.iter() if node.get("data-photo-status") is not None),
+        None,
+    )
     photo_is_fallback = photo is not None and photo.get("data-photo-status") == "fallback"
     if photo_path is None or not photo_path.is_file():
         issues.append(Issue(
@@ -314,15 +351,26 @@ def _check_empty_fields(
         name_value = logo_element.get("data")
         if not isinstance(name_value, str) or not name_value:
             continue
-        logo = root.find(f".//*[@id='logo-{name_value}']")
+        logo = next(
+            (
+                node for node in root.iter()
+                if node.get("data-logo-name") == name_value
+                or node.get("id") == f"logo-{name_value}"
+            ),
+            None,
+        )
         if logo is None or logo.get("data-logo-status") != "embedded":
             fallback_used = logo is not None and logo.get("data-logo-status") == "placeholder"
             issues.append(Issue(
                 "empty_fields", "warning" if fallback_used else "error", person_id,
                 f"Logo {name_value} is missing; {'a placeholder fallback was used' if fallback_used else 'no fallback was used'}.",
             ))
+    event_is_used = any(
+        item.get("type") == "text" and item.get("data") == "event.name"
+        for item in _layout_elements(layout)
+    )
     event_name = spec_adapter.event_value(spec, "name")
-    if event_name is None or not event_name.strip():
+    if event_is_used and (event_name is None or not event_name.strip()):
         fallback_used = "EVENT NAME" in _text_content(root)
         issues.append(Issue(
             "empty_fields", "warning" if fallback_used else "error", person_id,
@@ -367,6 +415,11 @@ def _check_data_match(
             ))
     role = spec_adapter.person_value(person, "role")
     role_label_node = text_by_id.get("role-label")
+    if role_label_node is None:
+        role_label_node = next(
+            (node for node in root.iter(f"{SVG_NS}text") if node.get("data-field") == "role"),
+            None,
+        )
     role_label = "".join(role_label_node.itertext()) if role_label_node is not None else None
     if role and role_label is not None and not _same_card_text(role_label, role):
         issues.append(Issue(
@@ -500,7 +553,12 @@ def _text_foreground(
     if element_id == "role-label":
         return _theme_color(colors, "text_on_primary")
     if source_element is not None and source_element.get("type") == "text":
-        return _theme_color(colors, str(source_element.get("color")))
+        color = str(source_element.get("color"))
+        if color == "role":
+            fill = text.get("fill")
+            if isinstance(fill, str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", fill):
+                return fill
+        return _theme_color(colors, color)
     fill = text.get("fill")
     if fill == "#FFFFFF" and element_id == "person-photo":
         return _theme_color(colors, "text_on_primary")
@@ -524,11 +582,17 @@ def _background_at(
 ) -> str:
     """Resolve the smallest layout rectangle containing the text anchor."""
     x, y = point
+    if source_element is not None and source_element.get("type") == "role_badge":
+        if not isinstance(role_background, str):
+            raise ValueError("Theme has no role color for this person's role")
+        return role_background
     if source_element is not None and source_element.get("type") in {"photo", "logo"}:
         return _theme_color(colors, str(source_element.get("color")))
     candidates = []
     for element in elements:
         if element.get("type") != "rect":
+            continue
+        if element.get("color") == "none":
             continue
         left, top, right, bottom = _layout_box(element)
         if left <= x <= right and top <= y <= bottom:
@@ -567,7 +631,16 @@ def _boxes_overlap(
     second: tuple[float, float, float, float],
 ) -> bool:
     """Return whether two positive-area boxes intersect."""
-    return first[0] < second[2] and second[0] < first[2] and first[1] < second[3] and second[1] < first[3]
+    return (
+        first[0] < first[2]
+        and first[1] < first[3]
+        and second[0] < second[2]
+        and second[1] < second[3]
+        and first[0] < second[2]
+        and second[0] < first[2]
+        and first[1] < second[3]
+        and second[1] < first[3]
+    )
 
 
 def _text_content(root: ElementTree.Element) -> str:
