@@ -1,0 +1,22 @@
+{
+  "_placeholder": true,
+  "name": "Bold Event",
+  "colors": {
+    "primary": "#FFE4E6",
+    "secondary": "#E0E7FF",
+    "background": "#FFF7ED",
+    "text": "#1C1917",
+    "text_on_primary": "#1C1917",
+    "accent": "#E11D48"
+  },
+  "role_colors": {
+    "participant": "#E11D48",
+    "organizer": "#EA580C",
+    "mentor": "#4F46E5",
+    "volunteer": "#9333EA"
+  },
+  "fonts": {
+    "heading": ["Poppins", "Arial"],
+    "body": ["Inter", "sans-serif"]
+  }
+}

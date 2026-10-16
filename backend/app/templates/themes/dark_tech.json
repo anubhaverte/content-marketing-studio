@@ -1,0 +1,16 @@
+{
+  "name": "dark_tech",
+  "colors": {
+    "background": "#0B1220",
+    "primary": "#1E293B",
+    "secondary": "#312E81",
+    "accent": "#38BDF8",
+    "text": "#F8FAFC"
+  },
+  "fonts": { "heading": "Poppins", "body": "Inter" },
+  "role_colors": {
+    "participant": "#38BDF8",
+    "organizer": "#F97316",
+    "mentor": "#4ADE80"
+  }
+}

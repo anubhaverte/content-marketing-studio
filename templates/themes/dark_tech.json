@@ -1,0 +1,22 @@
+{
+  "_placeholder": true,
+  "name": "Dark Tech",
+  "colors": {
+    "primary": "#1E293B",
+    "secondary": "#312E81",
+    "background": "#0B1220",
+    "text": "#F8FAFC",
+    "text_on_primary": "#FFFFFF",
+    "accent": "#38BDF8"
+  },
+  "role_colors": {
+    "participant": "#38BDF8",
+    "organizer": "#F97316",
+    "mentor": "#4ADE80",
+    "volunteer": "#A855F7"
+  },
+  "fonts": {
+    "heading": ["Poppins", "Segoe UI"],
+    "body": ["Inter", "sans-serif"]
+  }
+}

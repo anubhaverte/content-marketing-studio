@@ -1,0 +1,16 @@
+{
+  "name": "bold_event",
+  "colors": {
+    "background": "#FFF7ED",
+    "primary": "#FFE4E6",
+    "secondary": "#E0E7FF",
+    "accent": "#E11D48",
+    "text": "#1C1917"
+  },
+  "fonts": { "heading": "Poppins", "body": "Inter" },
+  "role_colors": {
+    "participant": "#E11D48",
+    "organizer": "#EA580C",
+    "mentor": "#4F46E5"
+  }
+}

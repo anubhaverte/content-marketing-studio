@@ -1,0 +1,11 @@
+id,name,role,team,email,photo
+SVNIT-2026-001,Aarav Sharma,participant,Team Algorithms,aarav.sharma@example.com,photos/ID-Sample-1.jpg
+SVNIT-2026-002,Neha Patel,organizer,Core Operations,neha.patel@example.com,photos/ID-Sample-2.jpg
+SVNIT-2026-003,Vikram Malhotra,mentor,Industry Mentors,vikram.m@example.com,photos/ID-Sample-3.jpg
+SVNIT-2026-004,Dr. Priya Ananthapadmanabhanswamy-Chatterjee,mentor,Advisory Board,priya.ac@example.com,photos/tall.png
+SVNIT-2026-005,Rohan Varma,participant,Team CyberSec,rohan.v@example.com,photos/wide.png
+SVNIT-2026-006,Ananya Roy,participant,Web Wizards,ananya.roy@example.com,photos/tiny.png
+SVNIT-2026-007,Kavya Saxena,participant,Team Matrix,kavya.s@example.com,
+SVNIT-2026-008,Siddharth Sen,organizer,,,photos/ID-Sample-1.jpg
+SVNIT-2026-009,Renée Dupont,mentor,Global Mentors,renee.dupont@example.com,photos/ID-Sample-2.jpg
+SVNIT-2026-010,Ishaan,participant,Code Ninjas,ishaan@example.com,photos/ID-Sample-3.jpg
