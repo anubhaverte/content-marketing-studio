@@ -1,4 +1,6 @@
 """The toolchain produces the right physical sizes."""
+import xml.etree.ElementTree as ET
+
 from PIL import Image
 from pypdf import PdfReader
 
@@ -23,6 +25,17 @@ def test_hello_card_sizes(tmp_path):
 
 
 def test_hello_card_is_deterministic():
-    a = hello_card.render_hello_svg("Priya Venkatakrishnan", "participant", True)
-    b = hello_card.render_hello_svg("Priya Venkatakrishnan", "participant", True)
+    person = {"name": "Priya Venkatakrishnan", "role": "participant"}
+    a = hello_card.render_hello_svg(person, debug_guides=True)
+    b = hello_card.render_hello_svg(person, debug_guides=True)
     assert a == b
+
+
+def test_hello_card_embeds_logos_and_real_font_files():
+    svg = hello_card.render_hello_svg({"name": "Priya Venkatakrishnan", "role": "participant"})
+
+    ET.fromstring(svg)
+    assert svg.count("data:image/svg+xml;base64,") == 2
+    assert svg.count("data:font/ttf;base64,") == 2
+    assert 'preserveAspectRatio="xMidYMid meet"' in svg
+    assert "<text" in svg
