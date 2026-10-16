@@ -1,0 +1,2 @@
+# Person 1 extra dependencies. Add ONLY to your own file.
+google-genai>=1.0.0

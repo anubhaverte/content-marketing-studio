@@ -1,0 +1,22 @@
+{
+  "_placeholder": true,
+  "name": "Dark",
+  "colors": {
+    "primary": "#0F172A",
+    "secondary": "#334155",
+    "background": "#111827",
+    "text": "#F8FAFC",
+    "text_on_primary": "#FFFFFF",
+    "accent": "#475569"
+  },
+  "role_colors": {
+    "participant": "#0369A1",
+    "organizer": "#BE123C",
+    "mentor": "#4D7C0F",
+    "volunteer": "#7E22CE"
+  },
+  "fonts": {
+    "heading": ["Segoe UI", "Arial"],
+    "body": ["Segoe UI", "sans-serif"]
+  }
+}

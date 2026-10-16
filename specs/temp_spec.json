@@ -1,0 +1,23 @@
+{
+  "event": {
+    "name": null,
+    "tagline": null,
+    "venue": null,
+    "date": null
+  },
+  "card": {
+    "width_mm": 54,
+    "height_mm": 86,
+    "bleed_mm": 3,
+    "safe_mm": 3
+  },
+  "layout": "classic",
+  "theme": "blue",
+  "logos": ["acm", "svnit"],
+  "roles": {
+    "participant": {},
+    "organizer": {},
+    "mentor": {},
+    "volunteer": {}
+  }
+}

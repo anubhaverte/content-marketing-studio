@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic>=2
+jinja2
+cairosvg
+pillow
+pandas
+segno
+opencv-python-headless
+python-multipart
+pypdf
+reportlab
+python-dotenv
+pytest
+httpx

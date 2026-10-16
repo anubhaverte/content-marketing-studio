@@ -1,0 +1,16 @@
+{
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "/backend/app/templates/layouts/*.json"
+      ],
+      "url": "./docs/schemas/layout.schema.json"
+    },
+    {
+      "fileMatch": [
+        "/backend/app/templates/themes/*.json"
+      ],
+      "url": "./docs/schemas/theme.schema.json"
+    }
+  ]
+}
