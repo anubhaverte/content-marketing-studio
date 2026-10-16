@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-{# Phase 0 toolchain proof. 1 SVG unit = 1 mm. Canvas = 54x86 card + 3 mm bleed = 60x92 mm. #}
+{# Phase 1 print proof. 1 SVG unit = 1 mm; the 60x92 mm canvas includes 3 mm bleed. #}
 <svg xmlns="http://www.w3.org/2000/svg" width="60mm" height="92mm" viewBox="0 0 60 92">
+  <style>
+    @font-face {
+      font-family: "{{ font_family }}";
+      src: url("{{ fonts.regular }}") format("truetype");
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: "{{ font_family }}";
+      src: url("{{ fonts.bold }}") format("truetype");
+      font-weight: 700;
+    }
+  </style>
   <!-- Background goes all the way to the edge (into the bleed) -->
   <rect x="0" y="0" width="60" height="92" fill="{{ colors.background }}"/>
   <rect x="0" y="0" width="60" height="24" fill="{{ colors.primary }}"/>

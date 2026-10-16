@@ -21,9 +21,10 @@ class TextFit:
 
 
 def find_font_file(families: Iterable[str], weight: str = "400") -> tuple[str, Path]:
-    """Return the first installed font file matching the configured families."""
+    """Return a repo-local font when available, then a matching system font."""
     windows = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
     local_fonts = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Windows" / "Fonts"
+    asset_fonts = Path(__file__).resolve().parents[1] / "assets" / "fonts"
     bold = _is_bold(weight)
     known = {
         "arial": (("arialbd.ttf" if bold else "arial.ttf"),),
@@ -31,6 +32,18 @@ def find_font_file(families: Iterable[str], weight: str = "400") -> tuple[str, P
         "dejavu sans": (("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"),),
     }
     for family in families:
+        family_key = re.sub(r"[^a-z0-9]", "", family.casefold())
+        if asset_fonts.is_dir():
+            for path in sorted(asset_fonts.glob("*.ttf")):
+                parts = path.stem.rsplit("-", 1)
+                if len(parts) != 2:
+                    continue
+                file_family, style = parts
+                if re.sub(r"[^a-z0-9]", "", file_family.casefold()) != family_key:
+                    continue
+                if _is_bold(style) == bold:
+                    return family, path
+
         candidates = known.get(family.casefold(), ())
         paths = [windows / name for name in candidates]
         paths.extend(local_fonts / name for name in candidates)

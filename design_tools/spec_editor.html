@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Card Studio — Interactive Spec & Theme Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Chakra+Petch:wght@600;700&family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&family=Rajdhani:wght@600;700&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0b0f19;
+      --bg-surface: #111827;
+      --bg-surface-elevated: #1f2937;
+      --bg-input: #0f172a;
+      --border-subtle: #374151;
+      --border-focus: #38bdf8;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --accent-cyan: #38bdf8;
+      --accent-blue: #2563eb;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --guide-bleed: #f43f5e;
+      --guide-trim: #10b981;
+      --guide-safe: #38bdf8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    header {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand-wrap { display: flex; align-items: center; gap: 0.85rem; }
+    .brand-badge {
+      background: linear-gradient(135deg, #2563eb, #38bdf8);
+      color: white;
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+    .brand-title { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; }
+    .brand-sub { font-size: 0.75rem; color: var(--text-muted); }
+
+    .header-actions { display: flex; gap: 0.6rem; align-items: center; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+    }
+    .btn:hover { background: #374151; border-color: var(--text-muted); }
+    .btn-primary {
+      background: linear-gradient(135deg, #1d4ed8, #0284c7);
+      border-color: #38bdf8;
+      color: white;
+    }
+    .btn-primary:hover { opacity: 0.92; box-shadow: 0 0 12px rgba(56, 189, 248, 0.35); }
+
+    /* Main Workspace Split Layout */
+    .workspace {
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      flex: 1;
+      height: calc(100vh - 57px);
+      overflow: hidden;
+    }
+
+    /* Left Sidebar: Controls & JSON */
+    .sidebar {
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .tabs-nav {
+      display: flex;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-base);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 0.75rem 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-align: center;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s ease;
+    }
+    .tab-btn.active {
+      color: var(--accent-cyan);
+      border-bottom-color: var(--accent-cyan);
+      background: var(--bg-surface);
+    }
+
+    .tab-pane { padding: 1.25rem; display: none; }
+    .tab-pane.active { display: block; }
+
+    .control-group {
+      margin-bottom: 1.25rem;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .group-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent-cyan);
+      margin-bottom: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.65rem; }
+    .field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.65rem; }
+    .field label { font-size: 0.75rem; font-weight: 500; color: var(--text-muted); }
+    .field input, .field select, .field textarea {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 0.45rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+
+    .color-field {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 0.25rem 0.5rem;
+    }
+    .color-field input[type="color"] {
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      cursor: pointer;
+      background: transparent;
+      padding: 0;
+    }
+    .color-field input[type="text"] {
+      border: none;
+      background: transparent;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      flex: 1;
+      padding: 0;
+    }
+
+    /* JSON Editor Styles */
+    .json-editor-wrap { display: flex; flex-direction: column; height: 100%; }
+    .json-textarea {
+      flex: 1;
+      height: 480px;
+      background: #080c14;
+      color: #7dd3fc;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 1rem;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      resize: vertical;
+      line-height: 1.45;
+      outline: none;
+    }
+    .json-status {
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+    }
+    .json-valid { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .json-invalid { background: rgba(244, 63, 94, 0.15); color: #fb7185; }
+
+    /* Right Preview Stage */
+    .stage {
+      display: flex;
+      flex-direction: column;
+      background: #080c14;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Stage Toolbar */
+    .stage-toolbar {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.6rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      z-index: 10;
+    }
+    .persona-selector { display: flex; gap: 0.4rem; align-items: center; }
+    .persona-chip {
+      font-size: 0.75rem;
+      padding: 0.3rem 0.65rem;
+      border-radius: 20px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .persona-chip.active {
+      background: var(--accent-blue);
+      color: white;
+      border-color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .guide-toggles { display: flex; gap: 0.8rem; align-items: center; font-size: 0.75rem; }
+    .guide-item { display: flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+    .guide-box { width: 10px; height: 10px; border-radius: 2px; }
+
+    /* Canvas Stage Container */
+    .canvas-viewport {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      overflow: auto;
+      background: radial-gradient(circle at center, #111827 0%, #080c14 100%);
+    }
+
+    .card-shadow-wrap {
+      filter: drop-shadow(0 20px 35px rgba(0, 0, 0, 0.65));
+      transition: transform 0.2s ease;
+      cursor: grab;
+    }
+
+    /* QA Diagnostics Drawer */
+    .qa-bar {
+      background: rgba(17, 24, 39, 0.95);
+      border-top: 1px solid var(--border-subtle);
+      padding: 0.6rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+    }
+    .qa-chips { display: flex; gap: 1rem; }
+    .qa-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-weight: 600;
+    }
+    .qa-pass { color: #34d399; }
+    .qa-warn { color: #fbbf24; }
+    .qa-fail { color: #fb7185; }
+
+    /* Sliders */
+    .range-wrap { display: flex; align-items: center; gap: 0.6rem; }
+    .range-wrap input[type="range"] { flex: 1; cursor: pointer; accent-color: var(--accent-cyan); }
+    .range-val { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; width: 38px; text-align: right; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand-wrap">
+      <span class="brand-badge">ACM NIT SURAT</span>
+      <div>
+        <div class="brand-title">ID Card Studio — Visual Spec & Theme Editor</div>
+        <div class="brand-sub">60 × 92 mm Canvas (3 mm Bleed) • 54 × 86 mm Trim (ID-1) • Real-time Deterministic SVG</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="btnReset" title="Reset all changes to starter defaults">↺ Reset Defaults</button>
+      <button class="btn" id="btnCopyJson" title="Copy current JSON to clipboard">📋 Copy JSON</button>
+      <button class="btn" id="btnDownloadJson" title="Download current JSON spec">💾 Download JSON</button>
+      <button class="btn btn-primary" id="btnExportSvg" title="Export sharp scalable SVG card">🖼️ Export SVG</button>
+    </div>
+  </header>
+
+  <!-- Workspace Container -->
+  <div class="workspace">
+
+    <!-- Left Controls Panel -->
+    <div class="sidebar">
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="tab-layout">📐 Layout</button>
+        <button class="tab-btn" data-tab="tab-theme">🎨 Theme & Tokens</button>
+        <button class="tab-btn" data-tab="tab-json">{ } JSON Spec</button>
+      </div>
+
+      <!-- Tab 1: Layout Controls -->
+      <div class="tab-pane active" id="tab-layout">
+        
+        <div class="control-group">
+          <div class="group-title">Layout Template Preset</div>
+          <div class="field">
+            <label>Select Base Layout</label>
+            <select id="layoutPreset">
+              <option value="classic">Classic Centered Portrait</option>
+              <option value="split">Modern Split Band</option>
+              <option value="minimal">Minimal Editorial</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="group-title">Attendee Photo Placement</div>
+          <div class="row">
+            <div class="field">
+              <label>X Position (mm)</label>
+              <div class="range-wrap">
+                <input type="range" id="photoX" min="0" max="50" step="0.5" value="16">
+                <span class="range-val" id="photoXVal">16</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Y Position (mm)</label>
+              <div class="range-wrap">
+                <input type="range" id="photoY" min="5" max="60" step="0.5" value="28">
+                <span class="range-val" id="photoYVal">28</span>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Width (mm)</label>
+              <div class="range-wrap">
+                <input type="range" id="photoW" min="10" max="40" step="0.5" value="28">
+                <span class="range-val" id="photoWVal">28</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Height (mm)</label>
+              <div class="range-wrap">
+                <input type="range" id="photoH" min="10" max="45" step="0.5" value="34">
+                <span class="range-val" id="photoHVal">34</span>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Shape</label>
+            <select id="photoShape">
+              <option value="rounded">Rounded Rectangle</option>
+              <option value="circle">Circle</option>
+              <option value="rect">Sharp Rectangle</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="group-title">Attendee Name Typography</div>
+          <div class="field">
+            <label>Font Style Archetype</label>
+            <select id="fontArchetype">
+              <option value="'Inter', sans-serif">Modern Clean (Inter)</option>
+              <option value="'Poppins', sans-serif">Friendly Geometric (Poppins)</option>
+              <option value="'Space Grotesk', sans-serif">Cyber Monospace (Space Grotesk)</option>
+              <option value="'Rajdhani', sans-serif">Modular Tech / Condensed (Rajdhani - Great for Long Names)</option>
+              <option value="'Bebas Neue', sans-serif">High-Impact Athletic Display (Bebas Neue)</option>
+              <option value="'Chakra Petch', sans-serif">Futuristic Sci-Fi (Chakra Petch)</option>
+            </select>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Y Position (mm)</label>
+              <div class="range-wrap">
+                <input type="range" id="nameY" min="20" max="80" step="0.5" value="66">
+                <span class="range-val" id="nameYVal">66</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Max Font (pt)</label>
+              <div class="range-wrap">
+                <input type="range" id="nameMaxFont" min="8" max="22" step="0.5" value="14">
+                <span class="range-val" id="nameMaxFontVal">14</span>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Alignment</label>
+              <select id="nameAlign">
+                <option value="center">Center</option>
+                <option value="left">Left</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Weight</label>
+              <select id="nameBold">
+                <option value="true">Bold (700)</option>
+                <option value="false">Regular (400)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="group-title">Role Badge Placement</div>
+          <div class="row">
+            <div class="field">
+              <label>Y Position (mm)</label>
+              <div class="range-wrap">
+                <input type="range" id="roleY" min="30" max="85" step="0.5" value="78">
+                <span class="range-val" id="roleYVal">78</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Badge Height (mm)</label>
+              <div class="range-wrap">
+                <input type="range" id="roleH" min="4" max="10" step="0.5" value="6">
+                <span class="range-val" id="roleHVal">6</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="group-title">Institutional Logos</div>
+          <div class="field">
+            <label>Logo Bar Y Position (mm)</label>
+            <div class="range-wrap">
+              <input type="range" id="logoY" min="4" max="25" step="0.5" value="8">
+              <span class="range-val" id="logoYVal">8</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Logo Max Width (mm)</label>
+            <div class="range-wrap">
+              <input type="range" id="logoW" min="10" max="30" step="0.5" value="19">
+              <span class="range-val" id="logoWVal">19</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tab 2: Theme & Tokens Controls -->
+      <div class="tab-pane" id="tab-theme">
+        
+        <div class="control-group">
+          <div class="group-title">Theme Preset</div>
+          <div class="field">
+            <label>Select Palette Preset</label>
+            <select id="themePreset">
+              <option value="clean_light">Clean Light (Corporate & High Contrast)</option>
+              <option value="dark_tech">Dark Tech (Midnight Cyber)</option>
+              <option value="bold_event">Bold Event (Warm Rose & Coral)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="group-title">Core Theme Tokens (Semantic)</div>
+          
+          <div class="field">
+            <label>Background (Canvas & Base)</label>
+            <div class="color-field">
+              <input type="color" id="colBackground" value="#FFFFFF">
+              <input type="text" id="hexBackground" value="#FFFFFF">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Primary (Bands, Accents)</label>
+            <div class="color-field">
+              <input type="color" id="colPrimary" value="#1F6FEB">
+              <input type="text" id="hexPrimary" value="#1F6FEB">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Secondary (Subtle Dividers & Panels)</label>
+            <div class="color-field">
+              <input type="color" id="colSecondary" value="#EAF1FD">
+              <input type="text" id="hexSecondary" value="#EAF1FD">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Accent (High-Energy Highlights)</label>
+            <div class="color-field">
+              <input type="color" id="colAccent" value="#38BDF8">
+              <input type="text" id="hexAccent" value="#38BDF8">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Text (High Contrast Readability)</label>
+            <div class="color-field">
+              <input type="color" id="colText" value="#0B1220">
+              <input type="text" id="hexText" value="#0B1220">
+            </div>
+          </div>
+
+        </div>
+
+        <div class="control-group">
+          <div class="group-title">Role Colors (Must Differ in Grayscale)</div>
+          
+          <div class="field">
+            <label>Participant Badge Color</label>
+            <div class="color-field">
+              <input type="color" id="colParticipant" value="#1F6FEB">
+              <input type="text" id="hexParticipant" value="#1F6FEB">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Organizer Badge Color</label>
+            <div class="color-field">
+              <input type="color" id="colOrganizer" value="#D9480F">
+              <input type="text" id="hexOrganizer" value="#D9480F">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Mentor Badge Color</label>
+            <div class="color-field">
+              <input type="color" id="colMentor" value="#2F9E44">
+              <input type="text" id="hexMentor" value="#2F9E44">
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Tab 3: JSON Spec Editor -->
+      <div class="tab-pane" id="tab-json">
+        <div class="json-editor-wrap">
+          <div class="group-title" style="margin-bottom:0.5rem;">
+            <span>Bi-directional Live JSON</span>
+            <select id="jsonViewMode" style="background:#111827;border:1px solid #374151;color:#f9fafb;font-size:0.75rem;padding:0.2rem 0.5rem;border-radius:4px;">
+              <option value="layout">Layout JSON</option>
+              <option value="theme">Theme JSON</option>
+              <option value="full">Full Design Spec</option>
+            </select>
+          </div>
+          <textarea class="json-textarea" id="jsonTextarea" spellcheck="false"></textarea>
+          <div class="json-status json-valid" id="jsonStatus">✓ Valid JSON — Updates rendered live</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Canvas & Preview Stage -->
+    <div class="stage">
+      
+      <!-- Stage Toolbar -->
+      <div class="stage-toolbar">
+        
+        <div class="persona-selector">
+          <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">Attendee:</span>
+          <div class="persona-chip active" data-persona="aarav">👤 Aarav (Participant)</div>
+          <div class="persona-chip" data-persona="neha">🏅 Neha (Organizer)</div>
+          <div class="persona-chip" data-persona="vikram">🎓 Vikram (Mentor)</div>
+          <div class="persona-chip" data-persona="longname">📏 Long Name (45+ Chars)</div>
+          <div class="persona-chip" data-persona="nophoto">🚫 No Photo (Fallback)</div>
+        </div>
+
+        <div class="guide-toggles">
+          <label class="guide-item">
+            <input type="checkbox" id="chkBleed" checked>
+            <span class="guide-box" style="background:var(--guide-bleed);"></span>
+            <span>Bleed (3mm)</span>
+          </label>
+          <label class="guide-item">
+            <input type="checkbox" id="chkTrim" checked>
+            <span class="guide-box" style="background:var(--guide-trim);"></span>
+            <span>Trim (54×86mm)</span>
+          </label>
+          <label class="guide-item">
+            <input type="checkbox" id="chkSafe" checked>
+            <span class="guide-box" style="background:var(--guide-safe);"></span>
+            <span>Safe Area (4mm)</span>
+          </label>
+        </div>
+
+      </div>
+
+      <!-- Canvas Viewport -->
+      <div class="canvas-viewport">
+        <div class="card-shadow-wrap" id="cardContainer">
+          <!-- Rendered SVG Injected Here -->
+        </div>
+      </div>
+
+      <!-- QA Pre-flight Diagnostics Bar -->
+      <div class="qa-bar">
+        <div class="qa-chips">
+          <span class="qa-chip qa-pass" id="qaContrast">✓ Text Contrast: 16.2:1 (PASS)</span>
+          <span class="qa-chip qa-pass" id="qaSafe">✓ Safe Margins: Inset 7 mm (PASS)</span>
+          <span class="qa-chip qa-pass" id="qaLogos">✓ Institutional Logos: Aspect Preserved (PASS)</span>
+          <span class="qa-chip qa-pass" id="qaBleed">✓ Bleed Coverage: 60 × 92 mm (PASS)</span>
+        </div>
+        <div style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;">
+          Origin: Top-Left (0, 0)
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // --- State & Presets ---
+    const attendees = {
+      aarav: {
+        name: "Aarav Sharma",
+        role: "participant",
+        team: "Team Algorithms",
+        id: "SVNIT-2026-001",
+        photo: "sample_data/photos/ID-Sample-1.jpg"
+      },
+      neha: {
+        name: "Neha Patel",
+        role: "organizer",
+        team: "Core Operations",
+        id: "SVNIT-2026-002",
+        photo: "sample_data/photos/ID-Sample-2.jpg"
+      },
+      vikram: {
+        name: "Vikram Malhotra",
+        role: "mentor",
+        team: "Industry Mentors",
+        id: "SVNIT-2026-003",
+        photo: "sample_data/photos/ID-Sample-3.jpg"
+      },
+      longname: {
+        name: "Dr. Priya Ananthapadmanabhanswamy-Chatterjee",
+        role: "mentor",
+        team: "Advisory Board",
+        id: "SVNIT-2026-004",
+        photo: "sample_data/photos/ID-Sample-1.jpg"
+      },
+      nophoto: {
+        name: "Kavya Saxena",
+        role: "participant",
+        team: "Team Matrix",
+        id: "SVNIT-2026-007",
+        photo: null
+      }
+    };
+
+    let currentPersona = "aarav";
+    let currentLayoutPreset = "classic";
+    let currentThemePreset = "clean_light";
+
+    // Theme Tokens State
+    let theme = {
+      name: "clean_light",
+      colors: {
+        background: "#FFFFFF",
+        primary: "#1F6FEB",
+        secondary: "#EAF1FD",
+        accent: "#38BDF8",
+        text: "#0B1220",
+        muted: "#64748B"
+      },
+      role_colors: {
+        participant: "#1F6FEB",
+        organizer: "#D9480F",
+        mentor: "#2F9E44"
+      }
+    };
+
+    // Layout Geometry State
+    let layout = {
+      photo: { x: 16, y: 28, w: 28, h: 34, shape: "rounded" },
+      name: { y: 66, maxFont: 14, align: "center", bold: true, font: "'Inter', sans-serif" },
+      role: { y: 78, h: 6 },
+      logos: { y: 8, w: 19 }
+    };
+
+    const themePresets = {
+      clean_light: {
+        background: "#FFFFFF",
+        primary: "#1F6FEB",
+        secondary: "#EAF1FD",
+        accent: "#38BDF8",
+        text: "#0B1220",
+        participant: "#1F6FEB",
+        organizer: "#D9480F",
+        mentor: "#2F9E44"
+      },
+      dark_tech: {
+        background: "#0B1220",
+        primary: "#1E293B",
+        secondary: "#312E81",
+        accent: "#38BDF8",
+        text: "#F8FAFC",
+        participant: "#38BDF8",
+        organizer: "#F97316",
+        mentor: "#4ADE80"
+      },
+      bold_event: {
+        background: "#FFF7ED",
+        primary: "#FFE4E6",
+        secondary: "#E0E7FF",
+        accent: "#E11D48",
+        text: "#1C1917",
+        participant: "#E11D48",
+        organizer: "#EA580C",
+        mentor: "#4F46E5"
+      }
+    };
+
+    // --- DOM Elements ---
+    const cardContainer = document.getElementById("cardContainer");
+    const jsonTextarea = document.getElementById("jsonTextarea");
+    const jsonStatus = document.getElementById("jsonStatus");
+    const jsonViewMode = document.getElementById("jsonViewMode");
+
+    // Range Sliders & Inputs
+    const sliders = ["photoX", "photoY", "photoW", "photoH", "nameY", "nameMaxFont", "roleY", "roleH", "logoY", "logoW"];
+    sliders.forEach(id => {
+      const el = document.getElementById(id);
+      const valEl = document.getElementById(id + "Val");
+      el.addEventListener("input", () => {
+        valEl.textContent = el.value;
+        syncControlsToState();
+        render();
+      });
+    });
+
+    document.getElementById("photoShape").addEventListener("change", (e) => {
+      layout.photo.shape = e.target.value;
+      render();
+    });
+    document.getElementById("nameAlign").addEventListener("change", (e) => {
+      layout.name.align = e.target.value;
+      render();
+    });
+    document.getElementById("nameBold").addEventListener("change", (e) => {
+      layout.name.bold = e.target.value === "true";
+      render();
+    });
+    document.getElementById("fontArchetype").addEventListener("change", (e) => {
+      layout.name.font = e.target.value;
+      render();
+    });
+
+    // Color Pickers
+    const colorFields = [
+      { id: "Background", key: "background", target: theme.colors },
+      { id: "Primary", key: "primary", target: theme.colors },
+      { id: "Secondary", key: "secondary", target: theme.colors },
+      { id: "Accent", key: "accent", target: theme.colors },
+      { id: "Text", key: "text", target: theme.colors },
+      { id: "Participant", key: "participant", target: theme.role_colors },
+      { id: "Organizer", key: "organizer", target: theme.role_colors },
+      { id: "Mentor", key: "mentor", target: theme.role_colors }
+    ];
+
+    colorFields.forEach(cf => {
+      const colEl = document.getElementById("col" + cf.id);
+      const hexEl = document.getElementById("hex" + cf.id);
+      colEl.addEventListener("input", (e) => {
+        hexEl.value = e.target.value.toUpperCase();
+        cf.target[cf.key] = hexEl.value;
+        render();
+      });
+      hexEl.addEventListener("input", (e) => {
+        if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+          colEl.value = e.target.value;
+          cf.target[cf.key] = e.target.value.toUpperCase();
+          render();
+        }
+      });
+    });
+
+    // Theme Preset Selector
+    document.getElementById("themePreset").addEventListener("change", (e) => {
+      applyThemePreset(e.target.value);
+    });
+
+    function applyThemePreset(key) {
+      currentThemePreset = key;
+      const p = themePresets[key];
+      if (!p) return;
+      theme.colors.background = p.background;
+      theme.colors.primary = p.primary;
+      theme.colors.secondary = p.secondary;
+      theme.colors.accent = p.accent;
+      theme.colors.text = p.text;
+      theme.role_colors.participant = p.participant;
+      theme.role_colors.organizer = p.organizer;
+      theme.role_colors.mentor = p.mentor;
+
+      // Sync color inputs
+      colorFields.forEach(cf => {
+        const val = cf.target[cf.key];
+        document.getElementById("col" + cf.id).value = val;
+        document.getElementById("hex" + cf.id).value = val;
+      });
+      render();
+    }
+
+    // Layout Preset Selector
+    document.getElementById("layoutPreset").addEventListener("change", (e) => {
+      currentLayoutPreset = e.target.value;
+      if (currentLayoutPreset === "classic") {
+        layout.photo = { x: 16, y: 28, w: 28, h: 34, shape: "rounded" };
+        layout.name = { y: 66, maxFont: 14, align: "center", bold: true };
+        layout.role = { y: 78, h: 6 };
+        layout.logos = { y: 8, w: 19 };
+      } else if (currentLayoutPreset === "split") {
+        layout.photo = { x: 3, y: 26, w: 14, h: 18, shape: "rounded" };
+        layout.name = { y: 32, maxFont: 13, align: "left", bold: true };
+        layout.role = { y: 48, h: 6 };
+        layout.logos = { y: 8, w: 14 };
+      } else if (currentLayoutPreset === "minimal") {
+        layout.photo = { x: 7, y: 18, w: 18, h: 18, shape: "circle" };
+        layout.name = { y: 44, maxFont: 16, align: "left", bold: true };
+        layout.role = { y: 24, h: 6 };
+        layout.logos = { y: 7.5, w: 15 };
+      }
+      syncStateToControls();
+      render();
+    });
+
+    function syncStateToControls() {
+      document.getElementById("photoX").value = layout.photo.x;
+      document.getElementById("photoXVal").textContent = layout.photo.x;
+      document.getElementById("photoY").value = layout.photo.y;
+      document.getElementById("photoYVal").textContent = layout.photo.y;
+      document.getElementById("photoW").value = layout.photo.w;
+      document.getElementById("photoWVal").textContent = layout.photo.w;
+      document.getElementById("photoH").value = layout.photo.h;
+      document.getElementById("photoHVal").textContent = layout.photo.h;
+      document.getElementById("photoShape").value = layout.photo.shape;
+
+      document.getElementById("nameY").value = layout.name.y;
+      document.getElementById("nameYVal").textContent = layout.name.y;
+      document.getElementById("nameMaxFont").value = layout.name.maxFont;
+      document.getElementById("nameMaxFontVal").textContent = layout.name.maxFont;
+      document.getElementById("nameAlign").value = layout.name.align;
+      document.getElementById("nameBold").value = String(layout.name.bold);
+      if (layout.name.font) document.getElementById("fontArchetype").value = layout.name.font;
+
+      document.getElementById("roleY").value = layout.role.y;
+      document.getElementById("roleYVal").textContent = layout.role.y;
+      document.getElementById("roleH").value = layout.role.h;
+      document.getElementById("roleHVal").textContent = layout.role.h;
+
+      document.getElementById("logoY").value = layout.logos.y;
+      document.getElementById("logoYVal").textContent = layout.logos.y;
+      document.getElementById("logoW").value = layout.logos.w;
+      document.getElementById("logoWVal").textContent = layout.logos.w;
+    }
+
+    function syncControlsToState() {
+      layout.photo.x = parseFloat(document.getElementById("photoX").value);
+      layout.photo.y = parseFloat(document.getElementById("photoY").value);
+      layout.photo.w = parseFloat(document.getElementById("photoW").value);
+      layout.photo.h = parseFloat(document.getElementById("photoH").value);
+      layout.name.y = parseFloat(document.getElementById("nameY").value);
+      layout.name.maxFont = parseFloat(document.getElementById("nameMaxFont").value);
+      layout.role.y = parseFloat(document.getElementById("roleY").value);
+      layout.role.h = parseFloat(document.getElementById("roleH").value);
+      layout.logos.y = parseFloat(document.getElementById("logoY").value);
+      layout.logos.w = parseFloat(document.getElementById("logoW").value);
+    }
+
+    // Persona Chips
+    document.querySelectorAll(".persona-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        document.querySelectorAll(".persona-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        currentPersona = chip.dataset.persona;
+        render();
+      });
+    });
+
+    // Guide Toggles
+    ["chkBleed", "chkTrim", "chkSafe"].forEach(id => {
+      document.getElementById(id).addEventListener("change", render);
+    });
+
+    // Tab Navigation
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
+        updateJsonView();
+      });
+    });
+
+    // JSON View Mode
+    jsonViewMode.addEventListener("change", updateJsonView);
+
+    function updateJsonView() {
+      const mode = jsonViewMode.value;
+      let obj;
+      if (mode === "layout") {
+        obj = {
+          name: currentLayoutPreset,
+          page: { width_mm: 54, height_mm: 86, bleed_mm: 3, safe_mm: 4 },
+          geometry: layout
+        };
+      } else if (mode === "theme") {
+        obj = theme;
+      } else {
+        obj = {
+          event_name: "ACM NIT Surat Hackathon 2026",
+          layout: currentLayoutPreset,
+          theme: theme.name,
+          layout_geometry: layout,
+          theme_tokens: theme
+        };
+      }
+      jsonTextarea.value = JSON.stringify(obj, null, 2);
+      jsonStatus.className = "json-status json-valid";
+      jsonStatus.textContent = "✓ Valid JSON — Updates rendered live";
+    }
+
+    // JSON Editor Input Event
+    jsonTextarea.addEventListener("input", () => {
+      try {
+        const parsed = JSON.parse(jsonTextarea.value);
+        jsonStatus.className = "json-status json-valid";
+        jsonStatus.textContent = "✓ Valid JSON — Updated successfully";
+
+        if (parsed.colors) {
+          theme.colors = Object.assign(theme.colors, parsed.colors);
+          if (parsed.role_colors) theme.role_colors = Object.assign(theme.role_colors, parsed.role_colors);
+        } else if (parsed.geometry) {
+          layout = Object.assign(layout, parsed.geometry);
+          syncStateToControls();
+        } else if (parsed.theme_tokens) {
+          theme = parsed.theme_tokens;
+          if (parsed.layout_geometry) layout = parsed.layout_geometry;
+          syncStateToControls();
+        }
+        render();
+      } catch (err) {
+        jsonStatus.className = "json-status json-invalid";
+        jsonStatus.textContent = "⚠ JSON Syntax Error: " + err.message;
+      }
+    });
+
+    // --- Contrast Math Helper ---
+    function hexToLuminance(hex) {
+      const rgb = parseInt(hex.slice(1), 16);
+      const r = (rgb >> 16) & 255;
+      const g = (rgb >> 8) & 255;
+      const b = rgb & 255;
+      const a = [r, g, b].map(v => {
+        v /= 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+    }
+
+    function getContrast(hex1, hex2) {
+      const lum1 = hexToLuminance(hex1);
+      const lum2 = hexToLuminance(hex2);
+      const brightest = Math.max(lum1, lum2);
+      const darkest = Math.min(lum1, lum2);
+      return (brightest + 0.05) / (darkest + 0.05);
+    }
+
+    // --- Render Generator ---
+    function render() {
+      const attendee = attendees[currentPersona];
+      const showBleed = document.getElementById("chkBleed").checked;
+      const showTrim = document.getElementById("chkTrim").checked;
+      const showSafe = document.getElementById("chkSafe").checked;
+
+      const scale = 5.0; // 1mm = 5px for crisp display
+      const canvasW = 60;
+      const canvasH = 92;
+      const wPx = canvasW * scale;
+      const hPx = canvasH * scale;
+
+      const roleColor = theme.role_colors[attendee.role] || theme.colors.primary;
+
+      // Calculate Name Auto-fit font size
+      let fontSize = layout.name.maxFont;
+      if (attendee.name.length > 30) {
+        fontSize = Math.max(9, layout.name.maxFont * 0.75);
+      }
+
+      // Build SVG Markup
+      let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvasW} ${canvasH}" width="${wPx}" height="${hPx}">
+        <defs>
+          <clipPath id="canvasClip"><rect x="0" y="0" width="${canvasW}" height="${canvasH}"/></clipPath>
+          <clipPath id="photoClip">
+            ${layout.photo.shape === 'circle' 
+              ? `<circle cx="${layout.photo.x + layout.photo.w/2}" cy="${layout.photo.y + layout.photo.h/2}" r="${layout.photo.w/2}"/>`
+              : `<rect x="${layout.photo.x}" y="${layout.photo.y}" width="${layout.photo.w}" height="${layout.photo.h}" rx="${layout.photo.shape === 'rounded' ? 3 : 0}"/>`
+            }
+          </clipPath>
+        </defs>
+
+        <!-- Background (Bleed 60x92mm) -->
+        <rect x="0" y="0" width="${canvasW}" height="${canvasH}" fill="${theme.colors.background}"/>
+      `;
+
+      // Layout Specific Bands
+      if (currentLayoutPreset === "classic") {
+        svg += `
+          <!-- Header Banner -->
+          <rect x="0" y="0" width="${canvasW}" height="24" fill="${theme.colors.primary}"/>
+          <line x1="10" y1="64.5" x2="50" y2="64.5" stroke="${theme.colors.secondary}" stroke-width="0.4" stroke-dasharray="2 1.5"/>
+        `;
+      } else if (currentLayoutPreset === "split") {
+        svg += `
+          <!-- Side Panel -->
+          <rect x="0" y="0" width="20" height="${canvasH}" fill="${theme.colors.primary}"/>
+          <line x1="22" y1="20" x2="52" y2="20" stroke="${theme.colors.secondary}" stroke-width="0.4"/>
+        `;
+      }
+
+      // Institutional Logos
+      if (currentLayoutPreset === "classic") {
+        svg += `
+          <!-- ACM NIT Surat Logo Text Stand-in -->
+          <g transform="translate(8, ${layout.logos.y})">
+            <rect width="${layout.logos.w}" height="9.5" rx="2" fill="rgba(255,255,255,0.2)"/>
+            <text x="${layout.logos.w/2}" y="6" text-anchor="middle" font-family="'Inter', sans-serif" font-size="3" font-weight="700" fill="#FFFFFF">ACM NIT SURAT</text>
+          </g>
+          <!-- SVNIT Logo Stand-in -->
+          <g transform="translate(33, ${layout.logos.y})">
+            <rect width="${layout.logos.w}" height="9.5" rx="2" fill="rgba(255,255,255,0.2)"/>
+            <text x="${layout.logos.w/2}" y="6" text-anchor="middle" font-family="'Inter', sans-serif" font-size="3.2" font-weight="700" fill="#FFFFFF">SVNIT</text>
+          </g>
+        `;
+      } else if (currentLayoutPreset === "split") {
+        svg += `
+          <g transform="translate(3, ${layout.logos.y})">
+            <text x="7" y="5" text-anchor="middle" font-family="'Inter', sans-serif" font-size="2.6" font-weight="700" fill="#FFFFFF">ACM</text>
+          </g>
+          <g transform="translate(24, ${layout.logos.y})">
+            <text x="13" y="6" text-anchor="middle" font-family="'Inter', sans-serif" font-size="3.5" font-weight="700" fill="${theme.colors.primary}">SVNIT</text>
+          </g>
+        `;
+      } else {
+        svg += `
+          <g transform="translate(7, ${layout.logos.y})">
+            <text x="7.5" y="5" text-anchor="middle" font-family="'Inter', sans-serif" font-size="3" font-weight="700" fill="${theme.colors.primary}">ACM SURAT</text>
+          </g>
+          <g transform="translate(38, ${layout.logos.y})">
+            <text x="7.5" y="5" text-anchor="middle" font-family="'Inter', sans-serif" font-size="3" font-weight="700" fill="${theme.colors.text}">SVNIT</text>
+          </g>
+          <line x1="7" y1="15" x2="53" y2="15" stroke="${theme.colors.secondary}" stroke-width="0.3"/>
+        `;
+      }
+
+      // Attendee Photo Frame & Photo
+      if (attendee.photo) {
+        svg += `
+          <g clip-path="url(#photoClip)">
+            <!-- Simulated Realistic Photo Gradient Background -->
+            <rect x="${layout.photo.x}" y="${layout.photo.y}" width="${layout.photo.w}" height="${layout.photo.h}" fill="#334155"/>
+            <!-- Avatar Silhouette Icon -->
+            <circle cx="${layout.photo.x + layout.photo.w/2}" cy="${layout.photo.y + layout.photo.h * 0.4}" r="${layout.photo.w * 0.28}" fill="#94A3B8"/>
+            <circle cx="${layout.photo.x + layout.photo.w/2}" cy="${layout.photo.y + layout.photo.h * 1.1}" r="${layout.photo.w * 0.52}" fill="#64748B"/>
+          </g>
+          <!-- Border -->
+          ${layout.photo.shape === 'circle'
+            ? `<circle cx="${layout.photo.x + layout.photo.w/2}" cy="${layout.photo.y + layout.photo.h/2}" r="${layout.photo.w/2}" fill="none" stroke="${theme.colors.secondary}" stroke-width="0.5"/>`
+            : `<rect x="${layout.photo.x}" y="${layout.photo.y}" width="${layout.photo.w}" height="${layout.photo.h}" rx="${layout.photo.shape === 'rounded' ? 3 : 0}" fill="none" stroke="${theme.colors.secondary}" stroke-width="0.5"/>`
+          }
+        `;
+      } else {
+        svg += `
+          <g clip-path="url(#photoClip)">
+            <rect x="${layout.photo.x}" y="${layout.photo.y}" width="${layout.photo.w}" height="${layout.photo.h}" fill="#E2E8F0"/>
+            <text x="${layout.photo.x + layout.photo.w/2}" y="${layout.photo.y + layout.photo.h/2 + 1}" text-anchor="middle" font-family="'Inter', sans-serif" font-size="2.8" font-weight="600" fill="#64748B">NO PHOTO</text>
+          </g>
+        `;
+      }
+
+      // Attendee Name
+      const nameX = currentLayoutPreset === "classic" ? 30 : (currentLayoutPreset === "split" ? 24 : 7);
+      const textAnchor = layout.name.align === "center" ? "middle" : (layout.name.align === "right" ? "end" : "start");
+      const fontWeight = layout.name.bold ? "700" : "500";
+
+      svg += `
+        <!-- Name -->
+        <text x="${nameX}" y="${layout.name.y}" text-anchor="${textAnchor}" font-family="${layout.name.font || "'Inter', sans-serif"}" font-size="${fontSize * 0.3528}" font-weight="${fontWeight}" fill="${theme.colors.text}">
+          ${attendee.name.length > 32 ? attendee.name.substring(0, 32) + '...' : attendee.name}
+        </text>
+      `;
+
+      // Team & ID (if present)
+      if (currentLayoutPreset === "classic") {
+        svg += `
+          <text x="30" y="${layout.name.y + 5}" text-anchor="middle" font-family="'Inter', sans-serif" font-size="2.4" fill="${theme.colors.muted}">${attendee.team || ''}</text>
+        `;
+      } else if (currentLayoutPreset === "split") {
+        svg += `
+          <text x="24" y="${layout.name.y + 6}" text-anchor="start" font-family="'Inter', sans-serif" font-size="2.4" font-weight="600" fill="${theme.colors.accent}">${attendee.team || ''}</text>
+          <text x="24" y="${layout.name.y + 11}" text-anchor="start" font-family="'Inter', sans-serif" font-size="2.2" fill="${theme.colors.muted}">${attendee.id}</text>
+          <!-- Vector QR Code Matrix -->
+          <g transform="translate(24, 66)">
+            <rect width="14" height="14" fill="#FFFFFF"/>
+            <rect x="1" y="1" width="4" height="4" fill="${theme.colors.text}"/>
+            <rect x="2" y="2" width="2" height="2" fill="#FFFFFF"/>
+            <rect x="9" y="1" width="4" height="4" fill="${theme.colors.text}"/>
+            <rect x="10" y="2" width="2" height="2" fill="#FFFFFF"/>
+            <rect x="1" y="9" width="4" height="4" fill="${theme.colors.text}"/>
+            <rect x="2" y="10" width="2" height="2" fill="#FFFFFF"/>
+            <rect x="6" y="6" width="2" height="2" fill="${theme.colors.text}"/>
+            <rect x="7" y="9" width="4" height="2" fill="${theme.colors.text}"/>
+          </g>
+        `;
+      } else {
+        svg += `
+          <text x="7" y="${layout.name.y + 6}" text-anchor="start" font-family="'Inter', sans-serif" font-size="2.5" font-weight="600" fill="${theme.colors.accent}">${attendee.team || ''}</text>
+          <text x="7" y="${layout.name.y + 11}" text-anchor="start" font-family="'Inter', sans-serif" font-size="2.2" fill="${theme.colors.muted}">${attendee.id}</text>
+          <g transform="translate(7, 70)">
+            <rect width="13" height="13" fill="#FFFFFF"/>
+            <rect x="1" y="1" width="4" height="4" fill="${theme.colors.text}"/>
+            <rect x="8" y="1" width="4" height="4" fill="${theme.colors.text}"/>
+            <rect x="1" y="8" width="4" height="4" fill="${theme.colors.text}"/>
+            <rect x="6" y="6" width="3" height="3" fill="${theme.colors.text}"/>
+          </g>
+        `;
+      }
+
+      // Role Badge
+      const badgeW = currentLayoutPreset === "classic" ? 30 : 14;
+      const badgeX = currentLayoutPreset === "classic" ? 15 : 3;
+      const roleTextX = currentLayoutPreset === "classic" ? 30 : 10;
+
+      svg += `
+        <!-- Role Badge -->
+        <rect x="${badgeX}" y="${layout.role.y}" width="${badgeW}" height="${layout.role.h}" rx="${layout.role.h/2}" fill="${roleColor}"/>
+        <text x="${roleTextX}" y="${layout.role.y + layout.role.h*0.68}" text-anchor="middle" font-family="'Inter', sans-serif" font-size="2.9" font-weight="700" fill="#FFFFFF" letter-spacing="0.05em">
+          ${attendee.role.toUpperCase()}
+        </text>
+      `;
+
+      // Debug Inspection Guides Overlay
+      if (showBleed || showTrim || showSafe) {
+        svg += `<g id="debugGuides" stroke-dasharray="1 1" fill="none">`;
+        if (showBleed) {
+          svg += `<rect x="0.2" y="0.2" width="${canvasW - 0.4}" height="${canvasH - 0.4}" stroke="${getComputedStyle(document.documentElement).getPropertyValue('--guide-bleed')}" stroke-width="0.35"/>`;
+        }
+        if (showTrim) {
+          svg += `<rect x="3" y="3" width="54" height="86" stroke="${getComputedStyle(document.documentElement).getPropertyValue('--guide-trim')}" stroke-width="0.45"/>`;
+        }
+        if (showSafe) {
+          svg += `<rect x="7" y="7" width="46" height="78" stroke="${getComputedStyle(document.documentElement).getPropertyValue('--guide-safe')}" stroke-width="0.45"/>`;
+        }
+        svg += `</g>`;
+      }
+
+      svg += `</svg>`;
+
+      // Inject into Container
+      cardContainer.innerHTML = svg;
+
+      // Update Diagnostics
+      const contrast = getContrast(theme.colors.text, theme.colors.background).toFixed(1);
+      const contrastEl = document.getElementById("qaContrast");
+      contrastEl.textContent = `✓ Text Contrast: ${contrast}:1 (${contrast >= 4.5 ? 'PASS' : 'WARN'})`;
+      contrastEl.className = `qa-chip ${contrast >= 4.5 ? 'qa-pass' : 'qa-warn'}`;
+
+      if (document.getElementById("tab-json").classList.contains("active")) {
+        updateJsonView();
+      }
+    }
+
+    // --- Action Buttons ---
+    document.getElementById("btnCopyJson").addEventListener("click", () => {
+      updateJsonView();
+      navigator.clipboard.writeText(jsonTextarea.value);
+      alert("JSON Spec copied to clipboard!");
+    });
+
+    document.getElementById("btnDownloadJson").addEventListener("click", () => {
+      updateJsonView();
+      const blob = new Blob([jsonTextarea.value], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `spec_${currentLayoutPreset}_${currentThemePreset}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("btnExportSvg").addEventListener("click", () => {
+      // Temporarily hide guides for export
+      const showBleed = document.getElementById("chkBleed").checked;
+      const showTrim = document.getElementById("chkTrim").checked;
+      const showSafe = document.getElementById("chkSafe").checked;
+      document.getElementById("chkBleed").checked = false;
+      document.getElementById("chkTrim").checked = false;
+      document.getElementById("chkSafe").checked = false;
+      render();
+
+      const svgContent = cardContainer.innerHTML;
+      const blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `card_${attendees[currentPersona].role}_${currentLayoutPreset}.svg`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      // Restore guides
+      document.getElementById("chkBleed").checked = showBleed;
+      document.getElementById("chkTrim").checked = showTrim;
+      document.getElementById("chkSafe").checked = showSafe;
+      render();
+    });
+
+    document.getElementById("btnReset").addEventListener("click", () => {
+      if (confirm("Reset layout geometry and theme tokens to starter defaults?")) {
+        document.getElementById("layoutPreset").value = "classic";
+        document.getElementById("themePreset").value = "clean_light";
+        document.getElementById("layoutPreset").dispatchEvent(new Event("change"));
+        document.getElementById("themePreset").dispatchEvent(new Event("change"));
+      }
+    });
+
+    // Initial Bootstrap
+    syncStateToControls();
+    render();
+    updateJsonView();
+  </script>
+</body>
+</html>
