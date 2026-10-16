@@ -1,0 +1,50 @@
+{
+  "id": "bold_event",
+  "name": "Bold Event",
+  "version": "1.0.0",
+  "description": "High-energy event palette with saturated role badges and strong typography.",
+  "fonts": {
+    "heading": "assets/fonts/SpaceGrotesk-Bold.ttf",
+    "body": "assets/fonts/Inter-Regular.ttf"
+  },
+  "colors": {
+    "primary": "#FFE4E6",
+    "secondary": "#E0E7FF",
+    "background": "#FFF7ED",
+    "text": "#1C1917",
+    "muted": "#57534E",
+    "accent": "#C2410C",
+    "role": "#BE123C"
+  },
+  "role_colors": {
+    "participant": {
+      "background": "#1D4ED8",
+      "text": "#FFFFFF"
+    },
+    "organizer": {
+      "background": "#9A3412",
+      "text": "#FFFFFF"
+    },
+    "mentor": {
+      "background": "#166534",
+      "text": "#FFFFFF"
+    }
+  },
+  "role_style": {
+    "participant": {
+      "badge_shape": "pill",
+      "badge_border": "solid",
+      "label": "PARTICIPANT"
+    },
+    "organizer": {
+      "badge_shape": "shield",
+      "badge_border": "double",
+      "label": "ORGANIZER"
+    },
+    "mentor": {
+      "badge_shape": "rect",
+      "badge_border": "dashed",
+      "label": "MENTOR"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "id": "dark_tech",
+  "name": "Dark Tech",
+  "version": "1.0.0",
+  "description": "Deep navy surfaces with crisp cyan accents for a modern technology event.",
+  "fonts": {
+    "heading": "assets/fonts/SpaceGrotesk-Bold.ttf",
+    "body": "assets/fonts/Inter-Regular.ttf"
+  },
+  "colors": {
+    "primary": "#1E293B",
+    "secondary": "#312E81",
+    "background": "#0B1220",
+    "text": "#F8FAFC",
+    "muted": "#AAB8CC",
+    "accent": "#2DD4BF",
+    "role": "#38BDF8"
+  },
+  "role_colors": {
+    "participant": {
+      "background": "#2563EB",
+      "text": "#FFFFFF"
+    },
+    "organizer": {
+      "background": "#F59E0B",
+      "text": "#111827"
+    },
+    "mentor": {
+      "background": "#0F766E",
+      "text": "#FFFFFF"
+    }
+  },
+  "role_style": {
+    "participant": {
+      "badge_shape": "pill",
+      "badge_border": "solid",
+      "label": "PARTICIPANT"
+    },
+    "organizer": {
+      "badge_shape": "shield",
+      "badge_border": "double",
+      "label": "ORGANIZER"
+    },
+    "mentor": {
+      "badge_shape": "rect",
+      "badge_border": "dashed",
+      "label": "MENTOR"
+    }
+  }
+}
