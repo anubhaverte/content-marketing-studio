@@ -18,6 +18,11 @@ Google Fonts page and select the listed static style; save it under the exact
 filename shown above. Do not substitute a variable font unless the renderer
 supports variable-font files and the theme paths are updated to match.
 
+The logo folder is also intentionally empty. Import approved raster artwork
+as `studio/assets/logos/acm_nit_surat.png` and
+`studio/assets/logos/svnit.png`; the temporary preview fits these within the
+layout boxes without stretching. Until supplied, it draws text stand-ins.
+
 | Theme | Heading font | Body font |
 | --- | --- | --- |
 | `clean_light` | Inter Bold | Inter Regular |

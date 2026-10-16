@@ -31,3 +31,9 @@ intentional `broken.jpg` is also referenced so unreadable-image behavior can be
 tested. Placeholder images contain only colored backgrounds and short labels;
 they do not depict real people. The photo generator enforces a total size below
 5 MiB.
+
+The local preview uses `TEST-ID-<id>` QR payloads, not real verification URLs,
+and leaves organization blank because the fixture contains no organization
+column. Official logo artwork, font binaries, and the fonts' OFL notices have
+not been supplied; see `studio/docs/FONTS.md` and the design handoff in
+`docs/README_DESIGN.md`.

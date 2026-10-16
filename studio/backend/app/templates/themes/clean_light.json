@@ -8,8 +8,8 @@
     "body": "assets/fonts/Inter-Regular.ttf"
   },
   "colors": {
-    "primary": "#1D4ED8",
-    "secondary": "#0F766E",
+    "primary": "#DBEAFE",
+    "secondary": "#CCFBF1",
     "background": "#FFFFFF",
     "text": "#172033",
     "muted": "#475569",
