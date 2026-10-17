@@ -134,8 +134,12 @@ def test_style_hints_influence_ranking(multi_catalog_mock):
 
 def test_no_silent_duplication_when_catalog_is_limited():
     """When catalog has fewer combinations than count and allow_theme_variations=False, returns exact catalog count."""
-    # Current disk catalog has 1 layout ('classic') and 1 theme ('clean_light')
-    drafts, is_mock = generate_drafts(count=3, allow_theme_variations=False)
+    drafts, is_mock = generate_drafts(
+        count=3,
+        layout_names=["classic"],
+        theme_names=["clean_light"],
+        allow_theme_variations=False,
+    )
     # Should not duplicate to reach 3
     assert len(drafts) == 1
     assert drafts[0].layout_name == "classic"
@@ -145,7 +149,12 @@ def test_no_silent_duplication_when_catalog_is_limited():
 
 def test_theme_variations_fallback_when_allowed_and_catalog_limited():
     """When allow_theme_variations=True and catalog has only 1 combo, fills to count with varied colors and marks mock=True."""
-    drafts, is_mock = generate_drafts(count=3, allow_theme_variations=True)
+    drafts, is_mock = generate_drafts(
+        count=3,
+        layout_names=["classic"],
+        theme_names=["clean_light"],
+        allow_theme_variations=True,
+    )
     assert len(drafts) == 3
     assert is_mock is True
     # The primary colors across the 3 drafts must differ
@@ -193,9 +202,9 @@ def test_api_drafts_endpoint_with_explicit_mock_false():
     assert response.status_code == 200
     data = response.json()
     assert data["mock"] is False
-    # With 1 catalog pair on disk and no mock variations allowed, returns 1
-    assert len(data["drafts"]) == 1
-    assert data["drafts"][0]["layout_name"] == "classic"
+    # With distinct catalog pairs on disk and no mock variations, returns distinct drafts
+    assert len(data["drafts"]) == 3
+    assert len({d["layout_name"] for d in data["drafts"]}) >= 2
 
 
 def test_api_drafts_endpoint_with_mock_true():

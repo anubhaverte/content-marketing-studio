@@ -28,6 +28,8 @@ def export_batch(
     skipped_rows: Sequence[dict[str, int | str]] = (),
     layout: dict[str, Any] | None = None,
     theme: dict[str, Any] | None = None,
+    canonical_spec: Any | None = None,
+    canonical_people: Sequence[Any] | None = None,
 ) -> bytes:
     """Export each person independently and package results plus a JSON report."""
     if layout is None:
@@ -40,15 +42,31 @@ def export_batch(
     used_names: set[str] = set()
     qa_issue_count = 0
 
-    for person in people:
+    for idx, person in enumerate(people):
         person_id = _person_id(person)
         issue_dicts: list[dict[str, str | None]] = []
+        c_person = canonical_people[idx] if canonical_people is not None and idx < len(canonical_people) else None
         try:
-            svg = _render_for_qa(spec, person, layout=layout, theme=theme)
+            svg = _render_for_qa(
+                spec,
+                person,
+                layout=layout,
+                theme=theme,
+                canonical_spec=canonical_spec,
+                canonical_person=c_person,
+            )
             issues = run_qa(spec, person, svg, layout, theme)
             issue_dicts = issues_to_dict(issues)
             qa_issue_count += len(issue_dicts)
-            exported = export_card(spec, person, settings, layout=layout, theme=theme)
+            exported = export_card(
+                spec,
+                person,
+                settings,
+                layout=layout,
+                theme=theme,
+                canonical_spec=canonical_spec,
+                canonical_person=c_person,
+            )
             role = spec_adapter.person_role(person)
             filename = _filename(person_id, role, extension, used_names)
             payloads.append((filename, exported))
@@ -104,11 +122,14 @@ def export_batch_pdf(
     *,
     layout: dict[str, Any] | None = None,
     theme: dict[str, Any] | None = None,
+    canonical_spec: Any | None = None,
+    canonical_people: Sequence[Any] | None = None,
 ) -> bytes:
     """Return one vector PDF page per person in the input sequence."""
     writer = PdfWriter()
-    for person in people:
+    for idx, person in enumerate(people):
         person_id = _person_id(person) or "unknown"
+        c_person = canonical_people[idx] if canonical_people is not None and idx < len(canonical_people) else None
         try:
             card_pdf = export_card(
                 spec,
@@ -121,6 +142,8 @@ def export_batch_pdf(
                 ),
                 layout=layout,
                 theme=theme,
+                canonical_spec=canonical_spec,
+                canonical_person=c_person,
             )
             writer.append(PdfReader(io.BytesIO(card_pdf)))
         except Exception as error:
@@ -136,8 +159,16 @@ def _render_for_qa(
     *,
     layout: dict[str, Any] | None = None,
     theme: dict[str, Any] | None = None,
+    canonical_spec: Any | None = None,
+    canonical_person: Any | None = None,
 ) -> str:
     """Render a card once for QA before its output export."""
+    if canonical_spec is not None and canonical_person is not None:
+        try:
+            from app.render.svg_builder import build_svg
+        except ImportError:
+            from backend.app.render.svg_builder import build_svg
+        return build_svg(canonical_spec, canonical_person)
     if layout is not None and theme is not None:
         from render.renderer import _render
         return _render(spec, person, layout, theme)

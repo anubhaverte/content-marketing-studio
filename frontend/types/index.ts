@@ -97,8 +97,8 @@ export interface BrandKit {
 export interface LayoutElement {
   id: string;
   type: string;
-  x: number;
-  y: number;
+  x?: number;
+  y?: number;
   width?: number;
   height?: number;
   field?: string;

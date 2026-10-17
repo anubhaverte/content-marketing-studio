@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Card Studio — ACM NIT Surat ID Card Generator",
-  description: "End-to-end event ID badge generation engine with deterministic SVG rendering, OpenCV photo processing, and print-ready export.",
+  title: "ACM ID Card Studio — ACM NIT Surat",
+  description: "Professional ID badge design & print-production workspace for ACM NIT Surat events.",
 };
 
 export default function RootLayout({
@@ -12,8 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="antialiased bg-slate-50 text-slate-900 min-h-screen">
+    <html lang="en" className="dark">
+      <body className="antialiased bg-[#232324] text-[#FAFAFA] min-h-screen selection:bg-white/20 selection:text-white">
         {children}
       </body>
     </html>

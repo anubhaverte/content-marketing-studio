@@ -58,7 +58,18 @@ def build_svg(spec: DesignSpec, person: Person, debug_guides: bool = False) -> s
         elif isinstance(element, CircleEl):
             fragments.append(draw_circle(element, spec.theme, role, element_id))
         elif isinstance(element, TextEl):
-            value = element.value if element.value is not None else person.get_field(element.field or "")
+            value = element.value
+            if value is None and element.field:
+                value = person.get_field(element.field)
+                if value is None:
+                    if element.field in ("event_name", "event.name", "event"):
+                        value = getattr(spec.event, "event_name", None) or "EVENT NAME"
+                    elif element.field in ("tagline", "event.tagline"):
+                        value = getattr(spec.event, "tagline", None)
+                    elif element.field in ("venue", "event.venue"):
+                        value = getattr(spec.event, "venue", None)
+                    elif element.field in ("dates", "date", "event.dates", "event.date"):
+                        value = getattr(spec.event, "dates", None)
             if value:
                 fragments.append(draw_text(element, spec.theme, value, role, element_id, font_faces))
         elif isinstance(element, PhotoEl):
@@ -85,7 +96,7 @@ def build_svg(spec: DesignSpec, person: Person, debug_guides: bool = False) -> s
                 )
             )
         elif isinstance(element, RoleBadgeEl):
-            label = _role_label(role)
+            label, icon = _role_info(role)
             if role not in spec.theme.role_colors:
                 warnings.warn(
                     f"Role {role!r} has no configured color; the primary theme color is used.",
@@ -100,6 +111,7 @@ def build_svg(spec: DesignSpec, person: Person, debug_guides: bool = False) -> s
                     label,
                     element_id,
                     font_faces,
+                    icon=icon,
                 )
             )
         elif isinstance(element, QrEl):
@@ -257,7 +269,7 @@ def _photo_data_uri(person: Person, element: PhotoEl) -> str | None:
 
 
 @lru_cache(maxsize=1)
-def _role_labels() -> dict[str, str]:
+def _roles_config() -> dict[str, dict[str, str]]:
     path = TEMPLATES / "roles.json"
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
@@ -269,20 +281,28 @@ def _role_labels() -> dict[str, str]:
         label = item.get("badge_text")
         if not isinstance(label, str) or not label:
             raise ValueError(f"Role {item['id']!r} has no badge_text in {path}")
-        result[item["id"]] = label
+        result[item["id"]] = {
+            "label": label,
+            "icon": item.get("icon") or "circle",
+        }
     return result
 
 
-def _role_label(role: str) -> str:
-    labels = _role_labels()
-    if role not in labels:
+def _role_info(role: str) -> tuple[str, str]:
+    config = _roles_config()
+    if role not in config:
         warnings.warn(
             f"Role {role!r} is not configured in roles.json; displaying its supplied value.",
             RuntimeWarning,
             stacklevel=2,
         )
-        return role.upper()
-    return labels[role]
+        return role.upper(), "circle"
+    return config[role]["label"], config[role].get("icon", "circle")
+
+
+def _role_label(role: str) -> str:
+    label, _ = _role_info(role)
+    return label
 
 
 def _initials(name: str) -> str:

@@ -223,9 +223,15 @@ def deterministic_fallback_extraction(user_text: str) -> Brief:
 
     # Detect style hint
     style_hint = None
-    for hint in ["minimal", "techy", "dark", "gradient", "clean", "modern", "bold"]:
+    for hint in [
+        "dark tech", "dark_tech", "dark", "techy", "tech", "cyber",
+        "bold event", "bold_event", "bold", "vibrant",
+        "clean light", "clean_light", "clean", "minimal",
+        "split", "sidebar", "two-tone",
+        "classic", "formal", "modern", "gradient",
+    ]:
         if hint in text_lower:
-            style_hint = hint
+            style_hint = hint.replace(" ", "_")
             break
 
     # Detect lanyard

@@ -138,6 +138,7 @@ def draw_role_badge(
     label: str,
     element_id: str,
     fonts_used: dict[tuple[str, str], Path],
+    icon: str | None = None,
 ) -> str:
     family, font_path = resolve_font(theme.fonts.body, True)
     fonts_used[(family, "700")] = font_path
@@ -145,12 +146,34 @@ def draw_role_badge(
     foreground = _color(el.text_color, theme, role)
     size = min(8.0 * 0.352778, el.h * 0.5)
     baseline = el.y + (el.h + size * 0.7) / 2
+
+    # Draw color-blind accessible shape cue
+    shape_svg = ""
+    text_x = el.x + el.w / 2
+    cue_icon = icon or ("circle" if role == "participant" else "square" if role == "organizer" else "triangle" if role == "mentor" else "diamond")
+    s = min(el.h * 0.22, 1.3)
+    cy = el.y + el.h / 2
+    cx = el.x + max(s + 1.2, el.h * 0.55)
+
+    if el.w >= 20:
+        text_x = el.x + (el.w + cx - el.x) / 2
+
+    if cue_icon == "circle":
+        shape_svg = f'<circle data-role-cue="circle" cx="{cx:g}" cy="{cy:g}" r="{s:g}" fill="{_attr(foreground)}"/>'
+    elif cue_icon in ("square", "rect"):
+        shape_svg = f'<rect data-role-cue="square" x="{cx - s:g}" y="{cy - s:g}" width="{2 * s:g}" height="{2 * s:g}" rx="0.3" fill="{_attr(foreground)}"/>'
+    elif cue_icon == "triangle":
+        shape_svg = f'<polygon data-role-cue="triangle" points="{cx:g},{cy - s * 1.15:g} {cx + s:g},{cy + s * 0.85:g} {cx - s:g},{cy + s * 0.85:g}" fill="{_attr(foreground)}"/>'
+    elif cue_icon == "diamond":
+        shape_svg = f'<polygon data-role-cue="diamond" points="{cx:g},{cy - s * 1.1:g} {cx + s:g},{cy:g} {cx:g},{cy + s * 1.1:g} {cx - s:g},{cy:g}" fill="{_attr(foreground)}"/>'
+
     return (
-        f'<g id="{_attr(element_id)}" data-role="{_attr(role)}">'
+        f'<g id="{_attr(element_id)}" data-role="{_attr(role)}" data-role-shape="{_attr(cue_icon)}">'
         f'<rect x="{el.x:g}" y="{el.y:g}" width="{el.w:g}" height="{el.h:g}" '
         f'rx="{el.h / 2:g}" fill="{_attr(background)}" stroke="{_attr(foreground)}" '
         f'stroke-width="0.25"/>'
-        f'<text data-field="role" x="{el.x + el.w / 2:g}" y="{baseline:g}" text-anchor="middle" '
+        f'{shape_svg}'
+        f'<text data-field="role" x="{text_x:g}" y="{baseline:g}" text-anchor="middle" '
         f'font-family="{_attr(family)}" font-size="{size:g}" font-weight="700" '
         f'fill="{_attr(foreground)}">{_text(label)}</text></g>'
     )

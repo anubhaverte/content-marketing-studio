@@ -3,14 +3,14 @@
   "page": { "width_mm": 54, "height_mm": 86, "bleed_mm": 3, "safe_mm": 4 },
   "elements": [
     { "type": "rect", "x": 0, "y": 0, "w": 60, "h": 92, "fill": "background" },
-    { "type": "logo", "src": "acm_nitsurat", "x": 7, "y": 7.5, "w": 15 },
-    { "type": "logo", "src": "svnit", "x": 38, "y": 7.5, "w": 15 },
-    { "type": "line", "x1": 7, "y1": 15, "x2": 53, "y2": 15, "stroke": "secondary", "stroke_width": 0.3 },
-    { "type": "photo", "field": "photo", "x": 7, "y": 18, "w": 18, "h": 18, "shape": "circle" },
-    { "type": "role_badge", "field": "role", "x": 28, "y": 24, "w": 25, "h": 6 },
-    { "type": "text", "field": "name", "x": 7, "y": 40, "w": 46, "font": "heading", "color": "text", "max_font": 16, "min_font": 10, "max_lines": 2, "align": "left", "bold": true },
-    { "type": "text", "field": "team", "x": 7, "y": 56, "w": 46, "font": "body", "color": "accent", "max_font": 9, "min_font": 7, "max_lines": 1, "align": "left" },
-    { "type": "text", "field": "id", "x": 7, "y": 63, "w": 46, "font": "body", "color": "text", "max_font": 8, "min_font": 6, "max_lines": 1, "align": "left" },
-    { "type": "qr", "field": "qr_url", "x": 7, "y": 70, "w": 14 }
+    { "type": "logo", "src": "acm_nitsurat", "x": 7, "y": 5.5, "w": 10, "h": 10 },
+    { "type": "logo", "src": "svnit", "x": 43, "y": 5.5, "w": 10, "h": 10 },
+    { "type": "line", "x1": 7, "y1": 18, "x2": 53, "y2": 18, "stroke": "secondary", "stroke_width": 0.3 },
+    { "type": "photo", "field": "photo", "x": 7, "y": 22, "w": 20, "h": 20, "shape": "circle" },
+    { "type": "role_badge", "field": "role", "x": 30, "y": 28, "w": 23, "h": 6 },
+    { "type": "text", "field": "name", "x": 7, "y": 46, "w": 46, "font": "heading", "color": "text", "max_font": 16, "min_font": 10, "max_lines": 2, "align": "left", "bold": true },
+    { "type": "text", "field": "team", "x": 7, "y": 60, "w": 46, "font": "body", "color": "accent", "max_font": 9, "min_font": 7, "max_lines": 1, "align": "left" },
+    { "type": "text", "field": "id", "x": 7, "y": 66, "w": 46, "font": "body", "color": "text", "max_font": 8, "min_font": 6, "max_lines": 1, "align": "left" },
+    { "type": "qr", "field": "qr_url", "x": 7, "y": 72, "w": 14, "h": 14 }
   ]
 }

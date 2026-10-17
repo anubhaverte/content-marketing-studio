@@ -13,8 +13,13 @@ from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import JSONResponse
 
 from app.api.models import RenderPreviewRequest, RenderPreviewResponse
-from app.api.render_models import RenderBatchRequest, RenderBatchResponse
+from app.api.render_models import (
+    RenderBatchRequest,
+    RenderBatchResponse,
+    RenderPrintSheetRequest,
+)
 from app.config import LAYOUTS, ROOT
+from app.export.print_sheet import make_print_sheet
 from app.render.svg_builder import build_svg
 from app.spec.loader import SpecError, load_layout as load_spec_layout
 from app.spec.schema import (
@@ -415,6 +420,8 @@ def render_batch(payload: Optional[RenderBatchRequest] = None) -> Any:
                 export_settings,
                 layout=layout_dict,
                 theme=theme_dict,
+                canonical_spec=spec,
+                canonical_people=people,
             )
         except Exception as err:
             raise HTTPException(
@@ -459,6 +466,8 @@ def render_batch(payload: Optional[RenderBatchRequest] = None) -> Any:
             skipped_rows=payload.skipped_rows,
             layout=layout_dict,
             theme=theme_dict,
+            canonical_spec=spec,
+            canonical_people=people,
         )
     except Exception as err:
         raise HTTPException(
@@ -494,3 +503,60 @@ def render_batch(payload: Optional[RenderBatchRequest] = None) -> Any:
             "X-QA-Issue-Count": str(totals.get("qa_issues", 0)),
         },
     )
+
+
+@router.post("/print-sheet", operation_id="render_print_sheet")
+@router.post("/print_sheet", operation_id="render_print_sheet_alias")
+def render_print_sheet(payload: RenderPrintSheetRequest) -> Response:
+    """Generate and return an imposed A4/A3 print sheet PDF with crop marks."""
+    import tempfile
+    from pathlib import Path
+
+    if not payload.people:
+        raise HTTPException(status_code=400, detail="Print sheet attendees list cannot be empty.")
+    if len(payload.people) > 500:
+        raise HTTPException(status_code=400, detail=f"Batch size {len(payload.people)} exceeds the limit of 500.")
+
+    # Render card SVGs for all attendees
+    card_svgs: list[str] = []
+    for person in payload.people:
+        try:
+            svg = build_svg(payload.spec, person)
+            card_svgs.append(svg)
+        except Exception as err:
+            raise HTTPException(status_code=422, detail=f"Failed rendering card for {person.name}: {err}") from err
+
+    # Create print sheet in a temporary file
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        make_print_sheet(
+            card_svgs=card_svgs,
+            out_path=tmp_path,
+            page=payload.page,
+            crop_marks=payload.crop_marks,
+        )
+        pdf_bytes = tmp_path.read_bytes()
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+
+    # Calculate total pages: A4 is 3x3=9 cards/page, A3 is 4x4=16 cards/page
+    cards_per_page = 9 if payload.page == "A4" else 16
+    total_pages = (len(payload.people) + cards_per_page - 1) // cards_per_page
+
+    filename = f"print_sheet_{payload.page.lower()}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Total-Count": str(len(payload.people)),
+            "X-Total-Cards": str(len(payload.people)),
+            "X-Total-Pages": str(total_pages),
+            "X-Page-Format": payload.page,
+        },
+    )
+
+

@@ -5,6 +5,8 @@ from __future__ import annotations
 from io import BytesIO
 from xml.etree import ElementTree
 
+from typing import Any
+
 from render import spec_adapter
 from render.renderer import render_card
 
@@ -24,9 +26,17 @@ def export_card(
     *,
     layout: dict[str, Any] | None = None,
     theme: dict[str, Any] | None = None,
+    canonical_spec: Any | None = None,
+    canonical_person: Any | None = None,
 ) -> bytes:
     """Render and export one card in the requested format."""
-    if layout is not None and theme is not None:
+    if canonical_spec is not None and canonical_person is not None:
+        try:
+            from app.render.svg_builder import build_svg
+        except ImportError:
+            from backend.app.render.svg_builder import build_svg
+        svg = build_svg(canonical_spec, canonical_person)
+    elif layout is not None and theme is not None:
         from render.renderer import _render
         svg = _render(spec, person, layout, theme)
     else:
