@@ -89,6 +89,13 @@ def multi_catalog_mock(monkeypatch):
     return layouts, themes
 
 
+@pytest.fixture
+def limited_catalog_mock(monkeypatch):
+    """Restricts the on-disk catalog to one pair for limited-catalog behavior tests."""
+    monkeypatch.setattr("app.generator.drafts.list_layouts", lambda: ["classic"])
+    monkeypatch.setattr("app.generator.drafts.list_themes", lambda: ["clean_light"])
+
+
 # ---------------------------------------------------------------------------
 # Unit tests
 # ---------------------------------------------------------------------------
@@ -132,9 +139,8 @@ def test_style_hints_influence_ranking(multi_catalog_mock):
     assert drafts_clean[0].layout_name == "minimal" or drafts_clean[0].theme_name == "clean_light"
 
 
-def test_no_silent_duplication_when_catalog_is_limited():
+def test_no_silent_duplication_when_catalog_is_limited(limited_catalog_mock):
     """When catalog has fewer combinations than count and allow_theme_variations=False, returns exact catalog count."""
-    # Current disk catalog has 1 layout ('classic') and 1 theme ('clean_light')
     drafts, is_mock = generate_drafts(count=3, allow_theme_variations=False)
     # Should not duplicate to reach 3
     assert len(drafts) == 1
@@ -143,7 +149,7 @@ def test_no_silent_duplication_when_catalog_is_limited():
     assert is_mock is False
 
 
-def test_theme_variations_fallback_when_allowed_and_catalog_limited():
+def test_theme_variations_fallback_when_allowed_and_catalog_limited(limited_catalog_mock):
     """When allow_theme_variations=True and catalog has only 1 combo, fills to count with varied colors and marks mock=True."""
     drafts, is_mock = generate_drafts(count=3, allow_theme_variations=True)
     assert len(drafts) == 3
@@ -183,7 +189,7 @@ def test_missing_or_empty_catalog_returns_empty_list(monkeypatch):
 # API integration tests: POST /drafts
 # ---------------------------------------------------------------------------
 
-def test_api_drafts_endpoint_with_explicit_mock_false():
+def test_api_drafts_endpoint_with_explicit_mock_false(limited_catalog_mock):
     """POST /drafts?mock=false returns real distinct catalog candidates."""
     payload = {
         "brief": {"design_type": "id_card", "event_name": "API Test"},
@@ -193,7 +199,7 @@ def test_api_drafts_endpoint_with_explicit_mock_false():
     assert response.status_code == 200
     data = response.json()
     assert data["mock"] is False
-    # With 1 catalog pair on disk and no mock variations allowed, returns 1
+    # With one catalog pair and no mock variations allowed, returns one.
     assert len(data["drafts"]) == 1
     assert data["drafts"][0]["layout_name"] == "classic"
 

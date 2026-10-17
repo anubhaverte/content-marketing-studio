@@ -166,7 +166,8 @@ def test_drafts_generation():
     res_2 = client.post("/drafts", json=req_2)
     assert res_2.status_code == 200
     data_2 = res_2.json()
-    assert data_2["mock"] is True
+    # The current catalog has enough real combinations, so no mock variants are needed.
+    assert data_2["mock"] is False
     assert len(data_2["drafts"]) == 2
 
     req_5 = {
@@ -206,4 +207,3 @@ def test_render_preview_stub():
     assert "Test User" in data["svg"]
     assert "qa_issues" in data
     assert isinstance(data["qa_issues"], list)
-
