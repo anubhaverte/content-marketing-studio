@@ -4,8 +4,8 @@
   "elements": [
     { "type": "rect", "x": 0, "y": 0, "w": 60, "h": 92, "fill": "background" },
     { "type": "rect", "x": 0, "y": 0, "w": 60, "h": 24, "fill": "primary" },
-    { "type": "logo", "src": "acm_nitsurat", "x": 8, "y": 8, "w": 19 },
-    { "type": "logo", "src": "svnit", "x": 33, "y": 8, "w": 19 },
+    { "type": "logo", "src": "acm_nitsurat", "x": 8, "y": 4.5, "w": 15, "h": 15 },
+    { "type": "logo", "src": "svnit", "x": 37, "y": 4.5, "w": 15, "h": 15 },
     { "type": "photo", "field": "photo", "x": 16, "y": 28, "w": 28, "h": 34, "shape": "rounded", "radius": 3 },
     { "type": "line", "x1": 10, "y1": 64.5, "x2": 50, "y2": 64.5, "stroke": "accent", "stroke_width": 0.4, "dash": [2, 1.5] },
     { "type": "text", "field": "name", "x": 7, "y": 66, "w": 46, "font": "heading", "color": "text",

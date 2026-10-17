@@ -45,3 +45,12 @@ class RenderBatchResponse(StrictModel):
     archive_base64: str
     filename: str
     media_type: str
+
+
+class RenderPrintSheetRequest(StrictModel):
+    """Request model for generating an imposed A4/A3 print sheet PDF."""
+    spec: DesignSpec
+    people: list[Person]
+    page: Literal["A4", "A3"] = "A4"
+    crop_marks: bool = True
+

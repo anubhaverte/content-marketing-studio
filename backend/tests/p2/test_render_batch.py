@@ -298,3 +298,35 @@ def test_render_batch_partial_failure_handling(sample_spec, sample_people, monke
         assert bob_record["status"] == "failed"
         assert "Simulated export failure" in bob_record["reason"]
 
+
+def test_render_print_sheet_endpoint(sample_spec, sample_people):
+    """POST /render/print-sheet returns valid A4 print sheet PDF with headers."""
+    payload = {
+        "spec": sample_spec.model_dump(),
+        "people": [p.model_dump() for p in sample_people],
+        "page": "A4",
+        "crop_marks": True,
+    }
+    response = client.post("/render/print-sheet", json=payload)
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "application/pdf"
+    assert "print_sheet_a4.pdf" in response.headers["Content-Disposition"]
+    assert response.headers["X-Total-Count"] == "3"
+    assert response.headers["X-Total-Cards"] == "3"
+    assert response.headers["X-Total-Pages"] == "1"
+    assert response.headers["X-Page-Format"] == "A4"
+    assert response.content.startswith(b"%PDF")
+
+    reader = PdfReader(io.BytesIO(response.content))
+    assert len(reader.pages) == 1
+
+    # Verify alias /render/print_sheet
+    res_alias = client.post("/render/print_sheet", json=payload)
+    assert res_alias.status_code == 200
+
+    # Verify /export/print-sheet endpoint
+    res_export = client.post("/export/print-sheet", json=payload)
+    assert res_export.status_code == 200
+
+
+

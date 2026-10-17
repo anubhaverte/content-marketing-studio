@@ -19,35 +19,62 @@ VARIANT_PRIMARY_COLORS = ["#D9480F", "#2F9E44", "#7950F2", "#E8590C", "#0C8599",
 
 
 def score_combination(layout: Layout, theme: Theme, brief: Optional[Brief] = None) -> int:
-    """Deterministic score for a layout + theme pair against brief style hints."""
+    """Deterministic score for a layout + theme pair against brief style hints and event details."""
     score = 0
-    if brief is None or not brief.style_hint:
+    if brief is None:
         return score
 
-    hint = brief.style_hint.strip().lower()
+    # Collect all available text hints from brief
+    search_texts = []
+    if brief.style_hint:
+        search_texts.append(brief.style_hint.lower())
+    if brief.tagline:
+        search_texts.append(brief.tagline.lower())
+    if brief.event_name:
+        search_texts.append(brief.event_name.lower())
+
+    combined_text = " ".join(search_texts)
+    if not combined_text:
+        return score
+
     l_name = layout.name.lower()
     t_name = theme.name.lower()
 
-    # Direct match with name
-    if hint in l_name:
-        score += 10
-    if hint in t_name:
-        score += 10
+    # Exact name matches
+    if l_name in combined_text:
+        score += 15
+    if t_name in combined_text:
+        score += 15
 
-    # Keyword associations
-    if hint in ("minimal", "clean", "simple"):
-        if "clean" in t_name or "minimal" in l_name:
+    # Layout matches:
+    if any(k in combined_text for k in ("minimal", "clean", "simple", "modern", "subtle", "lightweight")):
+        if l_name == "minimal":
+            score += 12
+        if t_name == "clean_light":
+            score += 8
+
+    if any(k in combined_text for k in ("split", "sidebar", "two-tone", "pillar", "asymmetric", "divider")):
+        if l_name == "split":
+            score += 15
+
+    if any(k in combined_text for k in ("classic", "formal", "traditional", "academic", "conference", "standard")):
+        if l_name == "classic":
+            score += 12
+
+    # Theme matches:
+    if any(k in combined_text for k in ("dark", "tech", "techy", "cyber", "terminal", "night", "hack", "hackathon", "ai", "coding")):
+        if t_name == "dark_tech":
+            score += 15
+        elif theme.colors.background.upper() not in ("#FFFFFF", "#FAFAFA", "#FFF7ED"):
             score += 5
-        if theme.colors.background.upper() in ("#FFFFFF", "#FAFAFA", "#F8F9FA"):
-            score += 3
-    elif hint in ("dark", "tech", "techy", "cyber"):
-        if "dark" in t_name or "tech" in l_name:
-            score += 5
-        if theme.colors.background.upper() not in ("#FFFFFF", "#FAFAFA"):
-            score += 3
-    elif hint in ("bold", "vibrant", "gradient"):
-        if "bold" in t_name or "gradient" in t_name:
-            score += 5
+
+    if any(k in combined_text for k in ("bold", "vibrant", "energetic", "fest", "celebration", "creative", "party")):
+        if t_name == "bold_event":
+            score += 15
+
+    if any(k in combined_text for k in ("clean", "light", "white", "minimalist", "corporate")):
+        if t_name == "clean_light":
+            score += 12
 
     return score
 

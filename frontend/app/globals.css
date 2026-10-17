@@ -4,19 +4,48 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --canvas: #232324;
+    --nav-surface: #0E0E10;
+    --panel-surface: #1E1E20;
+    --input-surface: #181818;
+    --text-primary: #FAFAFA;
+    --text-secondary: #A1A1AA;
+    --text-muted: #696970;
+    --divider: #38383C;
+    --border-subtle: rgba(255, 255, 255, 0.08);
   }
 
   body {
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: #232324;
+    color: #FAFAFA;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
+}
+
+/* Subtle Aurora accent gradient line */
+.aurora-accent {
+  background: linear-gradient(to right, #F6D1AC, #F3B5D2, #C7B8F5, #A7EADC, #AFCDF6);
 }
 
 /* Ensure card preview SVG renders at crisp vector fidelity */
 svg {
   shape-rendering: geometricPrecision;
   text-rendering: geometricPrecision;
+}
+
+/* Custom dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #181818;
+}
+::-webkit-scrollbar-thumb {
+  background: #38383C;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5C5C61;
 }

@@ -166,7 +166,6 @@ def test_drafts_generation():
     res_2 = client.post("/drafts", json=req_2)
     assert res_2.status_code == 200
     data_2 = res_2.json()
-    # The current catalog has enough real combinations, so no mock variants are needed.
     assert data_2["mock"] is False
     assert len(data_2["drafts"]) == 2
 
@@ -179,10 +178,10 @@ def test_drafts_generation():
     data_5 = res_5.json()
     assert len(data_5["drafts"]) == 5
 
-    # Count > 6 is rejected with 422
+    # Count > 9 is rejected with 422
     req_bad = {
         "brief": {"design_type": "id_card", "event_name": "Too Many"},
-        "count": 9,
+        "count": 10,
     }
     res_bad = client.post("/drafts", json=req_bad)
     assert res_bad.status_code == 422
@@ -207,3 +206,4 @@ def test_render_preview_stub():
     assert "Test User" in data["svg"]
     assert "qa_issues" in data
     assert isinstance(data["qa_issues"], list)
+

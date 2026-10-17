@@ -48,7 +48,7 @@ class DraftsRequest(StrictModel):
     """Request to generate candidate design specs from a brief and event info."""
     brief: Brief = Field(default_factory=Brief)
     event: EventInfo = Field(default_factory=EventInfo)
-    count: int = Field(default=3, ge=1, le=6)
+    count: int = Field(default=3, ge=1, le=9)
 
 
 class DraftsResponse(StrictModel):
@@ -66,6 +66,20 @@ class PatchRequest(StrictModel):
 class PatchResponse(StrictModel):
     """Patched DesignSpec result."""
     spec: DesignSpec
+
+
+class RefineRequest(StrictModel):
+    """Request to convert natural language instructions into a safe spec patch."""
+    spec: DesignSpec
+    prompt: str
+
+
+class RefineResponse(StrictModel):
+    """Refined DesignSpec result along with the applied patch operations."""
+    spec: DesignSpec
+    ops: list[PatchOp]
+    summary: str
+
 
 
 class RenderPreviewRequest(StrictModel):

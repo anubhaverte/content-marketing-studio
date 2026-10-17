@@ -35,6 +35,67 @@ def best_contrast_text_color(background: str, colors: dict[str, str]) -> tuple[s
     return name, color
 
 
+def resolve_photo_path(
+    path: str | Path,
+    allowed_roots: list[Path] | Path | None = None,
+) -> Path:
+    """Safely resolve a photo path and guarantee it does not escape allowed directories.
+
+    Raises:
+        ValueError: If path traversal (e.g. '../') is attempted or if the path is outside allowed roots.
+        FileNotFoundError: If the resolved path does not point to an existing file.
+    """
+    raw_str = str(path).replace("\\", "/")
+    # Reject directory traversal attempts immediately
+    if ".." in raw_str.split("/"):
+        raise ValueError(f"Path traversal detected: {path!r}")
+
+    p = Path(path)
+
+    # Determine allowed roots
+    repo_root = Path(__file__).resolve().parent.parent
+    default_roots = [
+        (repo_root / "sample_data" / "photos").resolve(),
+        (repo_root / "assets").resolve(),
+    ]
+    if allowed_roots is None:
+        roots = default_roots
+    elif isinstance(allowed_roots, Path):
+        roots = [allowed_roots.resolve()]
+    else:
+        roots = [r.resolve() for r in allowed_roots]
+
+    if p.is_absolute():
+        resolved = p.resolve()
+        is_safe = any(
+            resolved == r or r in resolved.parents
+            for r in roots
+        )
+        if not is_safe:
+            raise ValueError(f"Absolute photo path is outside allowed directories: {path!r}")
+    else:
+        # Relative path: resolve against each root in order
+        found: Path | None = None
+        for r in roots:
+            candidate = (r / p).resolve()
+            if candidate == r or r in candidate.parents:
+                if candidate.is_file():
+                    found = candidate
+                    break
+        if found is not None:
+            resolved = found
+        else:
+            candidate = (roots[0] / p).resolve()
+            if candidate != roots[0] and roots[0] not in candidate.parents:
+                raise ValueError(f"Photo path must remain inside allowed directory: {path!r}")
+            resolved = candidate
+
+    if not resolved.is_file():
+        raise FileNotFoundError(f"Photo file not found: {resolved}")
+
+    return resolved
+
+
 def photo_markup(
     path: Path,
     *,
@@ -45,11 +106,20 @@ def photo_markup(
     height: float,
     shape: PhotoShape,
     radius: float,
+    allowed_roots: list[Path] | Path | None = None,
 ) -> tuple[str, tuple[int, int]]:
     """Embed readable photo bytes, face-cropped to frame aspect ratio using OpenCV."""
     import io
     import sys
     import warnings
+
+    # Security check: validate traversal
+    raw_str = str(path).replace("\\", "/")
+    if ".." in raw_str.split("/"):
+        raise ValueError(f"Path traversal detected in photo path: {path!r}")
+
+    if allowed_roots is not None:
+        path = resolve_photo_path(path, allowed_roots=allowed_roots)
 
     try:
         from app.assets import photo_utils
@@ -116,7 +186,7 @@ def photo_markup(
     return (
         f'<defs><clipPath id="{clip_id}">{clip_shape}</clipPath></defs>'
         f'<image id="{escape(element_id)}" data-photo-status="embedded" data-crop-mode="{crop_mode}" '
-        f'data-source-size="{orig_width} {orig_height}" x="{image_x:g}" y="{image_y:g}" '
+        f'data-source-size="{image_width} {image_height}" x="{image_x:g}" y="{image_y:g}" '
         f'width="{rendered_width:g}" height="{rendered_height:g}" preserveAspectRatio="xMidYMid meet" '
         f'clip-path="url(#{clip_id})" href="data:{media_type};base64,{encoded}"/>',
         (orig_width, orig_height),
