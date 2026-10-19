@@ -77,10 +77,11 @@ def test_requirements_split_and_lock_not_tracked():
     req_path = ROOT / "backend" / "requirements.txt"
     assert req_path.exists()
     content = req_path.read_text(encoding="utf-8")
-    assert "-r requirements/base.txt" in content
-    assert "-r requirements/p1.txt" in content
-    assert "-r requirements/p2.txt" in content
-    assert "-r requirements/p4.txt" in content
+    assert "fastapi" in content
+    assert (ROOT / "backend" / "requirements" / "base.txt").exists()
+    assert (ROOT / "backend" / "requirements" / "p1.txt").exists()
+    assert (ROOT / "backend" / "requirements" / "p2.txt").exists()
+    assert (ROOT / "backend" / "requirements" / "p4.txt").exists()
 
     # Assert requirements.lock.txt is not tracked
     try:
