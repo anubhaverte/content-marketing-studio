@@ -15,8 +15,35 @@ import {
 } from "../types";
 import { sanitizeSpecForBackend } from "./specSanitizer";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
+/**
+ * Resolves the backend base URL dynamically.
+ * - On server runtime (Vercel Functions / SSR), uses Vercel's internal Service Binding (process.env.BACKEND_URL).
+ * - On client runtime or local dev, uses NEXT_PUBLIC_API_URL or defaults to /api (Vercel rewrites) or http://localhost:8000.
+ */
+export function getApiBase(): string {
+  // 1. Internal Service Binding injected by Vercel for server-to-server calls
+  if (typeof window === "undefined" && process.env.BACKEND_URL) {
+    return process.env.BACKEND_URL.replace(/\/$/, "");
+  }
+  // 2. Explicit public environment variable if specified
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
+  }
+  // 3. In browser on Vercel deployment, requests route via public /api rewrites to backend
+  if (typeof window !== "undefined") {
+    return "/api";
+  }
+  // 4. Standalone default for local developer environments
+  return "http://localhost:8000";
+}
+
+export function getApiUrl(path: string): string {
+  const base = getApiBase();
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${cleanPath}`;
+}
+
+const API_BASE = getApiBase();
 
 export class ApiError extends Error {
   status: number;

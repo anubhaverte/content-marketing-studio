@@ -63,5 +63,6 @@
   {"path": "verify_phase2.py", "owner": "p2"},
   {"path": "verify_phase3.py", "owner": "p2"},
   {"path": "verify_phase4.py", "owner": "p2"},
-  {"path": "verify_phase5a.py", "owner": "p2"}
+  {"path": "verify_phase5a.py", "owner": "p2"},
+  {"path": "vercel.json", "owner": "p1"}
 ]

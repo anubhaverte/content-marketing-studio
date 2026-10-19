@@ -17,10 +17,10 @@ from app.spec.loader import SpecError
 
 app = FastAPI(title="ID Card Studio", version=APP_VERSION)
 
-# Allow the Next.js frontend (Phase 6) to call this API during development
+# Allow the Next.js frontend to call this API during development and in production deployments
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
