@@ -194,7 +194,7 @@ export default function CardStudioApp() {
     } catch (err: any) {
       setBackendStatus("offline");
       setGlobalError(
-        "Unable to connect to the Card Studio rendering engine at http://localhost:8000. Please ensure backend services are started."
+        `Unable to connect to the Card Studio rendering engine (${err.message || "service unavailable"}). Please ensure backend services are started.`
       );
     }
   }
@@ -626,7 +626,7 @@ export default function CardStudioApp() {
                   ? `Live v${backendVersion}`
                   : backendStatus === "checking"
                   ? "Checking..."
-                  : "Offline (:8000)"}
+                  : "Offline"}
               </span>
             </div>
             {backendStatus === "offline" && (
