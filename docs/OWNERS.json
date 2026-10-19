@@ -1,5 +1,7 @@
 [
+  {"path": ".devcontainer/", "owner": "p1"},
   {"path": ".editorconfig", "owner": "p1"},
+  {"path": ".env.example", "owner": "p1"},
   {"path": ".gitattributes", "owner": "p1"},
   {"path": ".gitignore", "owner": "p1"},
   {"path": ".vscode/", "owner": "p1"},

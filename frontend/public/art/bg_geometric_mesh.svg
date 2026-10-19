@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 92" width="60mm" height="92mm">
+  <defs>
+    <linearGradient id="polyGrad1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563EB" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#38BDF8" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="polyGrad2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7C3AED" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#EC4899" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+  <polygon points="0,0 35,0 15,30 0,20" fill="url(#polyGrad1)"/>
+  <polygon points="35,0 60,0 60,25 15,30" fill="url(#polyGrad2)"/>
+  <polygon points="60,25 60,65 40,50 15,30" fill="url(#polyGrad1)" fill-opacity="0.6"/>
+  <polygon points="0,20 15,30 25,60 0,55" fill="url(#polyGrad2)" fill-opacity="0.5"/>
+  <polygon points="25,60 40,50 60,65 45,92 20,92" fill="url(#polyGrad1)"/>
+  <polygon points="0,55 25,60 20,92 0,92" fill="url(#polyGrad2)"/>
+  <polygon points="40,50 60,65 60,92 45,92" fill="url(#polyGrad2)" fill-opacity="0.7"/>
+</svg>

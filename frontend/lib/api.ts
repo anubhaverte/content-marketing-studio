@@ -13,6 +13,7 @@ import {
   RenderBatchRequest,
   RenderPreviewResponse,
 } from "../types";
+import { sanitizeSpecForBackend } from "./specSanitizer";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
@@ -108,11 +109,12 @@ export async function renderPreview(
   person: Person,
   debugGuides = false
 ): Promise<RenderPreviewResponse> {
+  const safeSpec = sanitizeSpecForBackend(spec);
   const res = await fetch(`${API_BASE}/render/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      spec,
+      spec: safeSpec,
       person,
       debug_guides: debugGuides,
     }),
@@ -132,10 +134,14 @@ export interface BatchDownloadResult {
 export async function renderBatch(
   request: RenderBatchRequest
 ): Promise<BatchDownloadResult> {
+  const safeRequest: RenderBatchRequest = {
+    ...request,
+    spec: sanitizeSpecForBackend(request.spec),
+  };
   const res = await fetch(`${API_BASE}/render/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
+    body: JSON.stringify(safeRequest),
   });
 
   if (!res.ok) {
@@ -215,10 +221,11 @@ export async function renderPrintSheet(
   page: "A4" | "A3" = "A4",
   cropMarks: boolean = true
 ): Promise<PrintSheetDownloadResult> {
+  const safeSpec = sanitizeSpecForBackend(spec);
   const res = await fetch(`${API_BASE}/render/print-sheet`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ spec, people, page, crop_marks: cropMarks }),
+    body: JSON.stringify({ spec: safeSpec, people, page, crop_marks: cropMarks }),
   });
 
   if (!res.ok) {
@@ -267,3 +274,33 @@ export async function refineSpec(
   });
   return handleResponse<RefineResponse>(res);
 }
+
+export interface UploadAssetResponse {
+  success: boolean;
+  filename: string;
+  publicPath: string;
+  relativeRepoPath: string;
+  dataUrl: string;
+}
+
+export async function uploadAsset(
+  fileOrBase64: File | { base64: string; filename?: string; mimeType?: string }
+): Promise<UploadAssetResponse> {
+  let res: Response;
+  if (fileOrBase64 instanceof File) {
+    const formData = new FormData();
+    formData.append("file", fileOrBase64);
+    res = await fetch("/api/upload-asset", { method: "POST", body: formData });
+  } else {
+    res = await fetch("/api/upload-asset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fileOrBase64),
+    });
+  }
+  if (!res.ok) {
+    throw new Error("Failed to upload asset");
+  }
+  return res.json();
+}
+

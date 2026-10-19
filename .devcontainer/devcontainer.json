@@ -1,12 +1,10 @@
 {
-  "name": "Python 3",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+  "name": "ID Card Studio (FastAPI + Next.js)",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
   "customizations": {
     "codespaces": {
       "openFiles": [
-        "README.md",
-        "streamlit_app.py"
+        "README.md"
       ]
     },
     "vscode": {
@@ -17,17 +15,19 @@
       ]
     }
   },
-  "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit; echo '✅ Packages installed and Requirements met'",
-  "postAttachCommand": {
-    "server": "streamlit run streamlit_app.py --server.enableCORS false --server.enableXsrfProtection false"
-  },
+  "updateContentCommand": "sudo apt update && sudo apt install -y libcairo2 libgl1 libglib2.0-0 && pip3 install --user -r backend/requirements.txt && echo '✅ Native graphics and Python dependencies installed'",
   "portsAttributes": {
-    "8501": {
-      "label": "Application",
+    "8000": {
+      "label": "FastAPI Backend API",
+      "onAutoForward": "silent"
+    },
+    "3000": {
+      "label": "Next.js Frontend UI",
       "onAutoForward": "openPreview"
     }
   },
   "forwardPorts": [
-    8501
+    8000,
+    3000
   ]
 }

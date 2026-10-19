@@ -119,6 +119,16 @@ export interface DesignSpec {
   elements: LayoutElement[];
 }
 
+export interface CustomLayoutOption {
+  id: string;
+  name: string;
+  baseLayout: string;
+  baseTheme: string;
+  spec: DesignSpec;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface DraftsResponse {
   drafts: DesignSpec[];
   mock?: boolean;

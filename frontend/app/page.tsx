@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import VisualSpecEditor from "../components/VisualSpecEditor";
 import {
@@ -16,12 +16,17 @@ import {
 import { parseCsvText } from "../lib/csv";
 import {
   BriefResponse,
+  CustomLayoutOption,
   DataSummary,
   DesignSpec,
   EventBrief,
   Person,
   QAIssue,
 } from "../types";
+import {
+  sanitizeSpecForBackend,
+  isSpecModifiedFromStandard,
+} from "../lib/specSanitizer";
 
 const FALLBACK_DEFAULT_SPEC: DesignSpec = {
   schema_version: "1.0",
@@ -100,6 +105,58 @@ export default function CardStudioApp() {
   const [draftLayoutFilter, setDraftLayoutFilter] = useState<string>("all");
   const [draftThemeFilter, setDraftThemeFilter] = useState<string>("all");
   const [step3ViewMode, setStep3ViewMode] = useState<"matrix" | "grid">("matrix");
+
+  // Custom Layouts State (Preserves base 9 combos and isolates user edits)
+  const [customLayouts, setCustomLayouts] = useState<CustomLayoutOption[]>([]);
+  const [selectedCustomLayoutId, setSelectedCustomLayoutId] = useState<string | null>(null);
+  const [editingCustomLayoutNameId, setEditingCustomLayoutNameId] = useState<string | null>(null);
+  const [customLayoutTempName, setCustomLayoutTempName] = useState<string>("");
+
+  // Load custom layouts from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("card_studio_custom_layouts");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCustomLayouts(parsed);
+        }
+      }
+    } catch {
+      // ignore parse error
+    }
+  }, []);
+
+  function persistCustomLayouts(updatedList: CustomLayoutOption[]) {
+    setCustomLayouts(updatedList);
+    try {
+      localStorage.setItem("card_studio_custom_layouts", JSON.stringify(updatedList));
+    } catch {
+      // ignore storage error
+    }
+  }
+
+  // Active custom layout object if selected
+  // Active custom layout object if selected
+  const activeCustomLayout = useMemo(() => {
+    if (!selectedCustomLayoutId) return null;
+    return customLayouts.find((c) => c.id === selectedCustomLayoutId) || null;
+  }, [selectedCustomLayoutId, customLayouts]);
+
+  // Working specification updated in real-time by VisualSpecEditor
+  const [editorWorkingSpec, setEditorWorkingSpec] = useState<DesignSpec | null>(null);
+
+  // Clear working spec when changing drafts or custom layout
+  useEffect(() => {
+    setEditorWorkingSpec(null);
+  }, [selectedDraftIndex, selectedCustomLayoutId]);
+
+  // Active DesignSpec used everywhere across Preview, Editor, and Export
+  const activeSpec: DesignSpec = useMemo(() => {
+    if (editorWorkingSpec) return editorWorkingSpec;
+    if (activeCustomLayout) return activeCustomLayout.spec;
+    return drafts[selectedDraftIndex] || FALLBACK_DEFAULT_SPEC;
+  }, [editorWorkingSpec, activeCustomLayout, drafts, selectedDraftIndex]);
 
   // Step 4: Preview & Visual Spec Editor State
   const [step4ViewMode, setStep4ViewMode] = useState<"editor" | "preview">("editor");
@@ -258,9 +315,148 @@ export default function CardStudioApp() {
     }
   }
 
+  // --- Custom Layout Handlers ---
+  function handleApplySpecFromEditor(updatedSpec: DesignSpec) {
+    // 1. If currently editing an existing custom layout, update it
+    if (selectedCustomLayoutId) {
+      const updatedList = customLayouts.map((item) => {
+        if (item.id === selectedCustomLayoutId) {
+          return {
+            ...item,
+            spec: updatedSpec,
+            updatedAt: Date.now(),
+          };
+        }
+        return item;
+      });
+      persistCustomLayouts(updatedList);
+      setSpecCustomizedBanner(
+        `Custom Layout "${activeCustomLayout?.name || "Custom"}" updated successfully! Changes saved without modifying base combos.`
+      );
+      setTimeout(() => setSpecCustomizedBanner(null), 6000);
+      return;
+    }
+
+    // 2. Otherwise, user was editing one of the base 9 combos.
+    // Check if any change is detected from the standard base combo!
+    const baseCombo = drafts[selectedDraftIndex] || FALLBACK_DEFAULT_SPEC;
+    const isModified = isSpecModifiedFromStandard(updatedSpec, baseCombo);
+
+    if (isModified) {
+      // Modification detected! Add as a new custom layout option, preserving the base 9 combos!
+      const newId = `custom_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+      const layoutLabel = (baseCombo.layout_name || "Classic").toUpperCase();
+      let effectiveTheme = (
+        ["clean_light", "dark_tech", "bold_event"].includes((updatedSpec.theme_name || "").toLowerCase())
+          ? updatedSpec.theme_name
+          : ["clean_light", "dark_tech", "bold_event"].includes((updatedSpec.theme?.name || "").toLowerCase())
+          ? updatedSpec.theme.name
+          : baseCombo.theme_name || "clean_light"
+      );
+      const bgHex = updatedSpec.theme?.colors?.background || "";
+      if (typeof bgHex === "string" && bgHex.startsWith("#") && bgHex.length >= 7) {
+        const r = parseInt(bgHex.slice(1, 3), 16) || 0;
+        const g = parseInt(bgHex.slice(3, 5), 16) || 0;
+        const b = parseInt(bgHex.slice(5, 7), 16) || 0;
+        const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        if (lum < 0.45) {
+          effectiveTheme = "dark_tech";
+        }
+      }
+      const themeLabel = (effectiveTheme || "Clean Light").replace("_", " ").toUpperCase();
+      const customName = `Custom ${layoutLabel} (${themeLabel}) #${customLayouts.length + 1}`;
+
+      const newCustomOption: CustomLayoutOption = {
+        id: newId,
+        name: customName,
+        baseLayout: baseCombo.layout_name || "classic",
+        baseTheme: effectiveTheme,
+        spec: {
+          ...updatedSpec,
+          layout_name: "custom",
+          // Preserve base references for backend export
+          ...({ base_layout: baseCombo.layout_name || "classic", base_theme: effectiveTheme } as any),
+        },
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      const updatedList = [...customLayouts, newCustomOption];
+      persistCustomLayouts(updatedList);
+      setEditorWorkingSpec(null);
+      setSelectedCustomLayoutId(newId);
+
+      setSpecCustomizedBanner(
+        `✨ Customization detected! Automatically created "${customName}" in Design Drafts. Base 9 combinations were kept 100% pristine.`
+      );
+      setTimeout(() => setSpecCustomizedBanner(null), 7000);
+    } else {
+      setSpecCustomizedBanner(
+        "No changes from the standard combination were detected. Base combination remains active."
+      );
+      setTimeout(() => setSpecCustomizedBanner(null), 4000);
+    }
+  }
+
+  function handleRenameCustomLayout(id: string, newName: string) {
+    if (!newName.trim()) return;
+    const updatedList = customLayouts.map((c) =>
+      c.id === id ? { ...c, name: newName.trim(), updatedAt: Date.now() } : c
+    );
+    persistCustomLayouts(updatedList);
+    setEditingCustomLayoutNameId(null);
+  }
+
+  function handleDeleteCustomLayout(id: string) {
+    const updatedList = customLayouts.filter((c) => c.id !== id);
+    persistCustomLayouts(updatedList);
+    if (selectedCustomLayoutId === id) {
+      setSelectedCustomLayoutId(null);
+      setSelectedDraftIndex(0);
+    }
+  }
+
+  function handleDuplicateCustomLayout(id: string) {
+    const target = customLayouts.find((c) => c.id === id);
+    if (!target) return;
+    const copyId = `custom_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const copyOption: CustomLayoutOption = {
+      ...target,
+      id: copyId,
+      name: `${target.name} (Copy)`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    const updatedList = [...customLayouts, copyOption];
+    persistCustomLayouts(updatedList);
+    setSelectedCustomLayoutId(copyId);
+  }
+
+  function handleCreateNewCustomLayout() {
+    const baseCombo = drafts[selectedDraftIndex] || FALLBACK_DEFAULT_SPEC;
+    const newId = `custom_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const newOption: CustomLayoutOption = {
+      id: newId,
+      name: `Custom Design #${customLayouts.length + 1}`,
+      baseLayout: baseCombo.layout_name || "classic",
+      baseTheme: baseCombo.theme_name || "clean_light",
+      spec: {
+        ...JSON.parse(JSON.stringify(baseCombo)),
+        layout_name: "custom",
+        ...({ base_layout: baseCombo.layout_name || "classic", base_theme: baseCombo.theme_name || "clean_light" } as any),
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    persistCustomLayouts([...customLayouts, newOption]);
+    setSelectedCustomLayoutId(newId);
+    setStep4ViewMode("editor");
+    setCurrentStep(4);
+  }
+
   async function handleRenderPreview() {
-    if (drafts.length === 0) return;
-    const spec = drafts[selectedDraftIndex];
+    const spec = activeSpec;
+    if (!spec) return;
     const person = people[currentPersonIndex] || {
       name: "Alex Mercer",
       role: "participant",
@@ -284,18 +480,18 @@ export default function CardStudioApp() {
 
   // Trigger preview when draft, attendee, or guides toggle changes
   useEffect(() => {
-    if (currentStep === 4 && drafts.length > 0) {
+    if (currentStep === 4 && (drafts.length > 0 || customLayouts.length > 0)) {
       handleRenderPreview();
     }
-  }, [currentStep, selectedDraftIndex, currentPersonIndex, showDebugGuides]);
+  }, [currentStep, selectedDraftIndex, selectedCustomLayoutId, currentPersonIndex, showDebugGuides]);
 
   async function handleBatchExport() {
-    if (drafts.length === 0) {
+    const spec = activeSpec;
+    if (!spec) {
       setGlobalError("Please select a design draft first.");
       return;
     }
 
-    const spec = drafts[selectedDraftIndex];
     const exportPeople = people.length > 0 ? people : [
       { name: "Alex Mercer", role: "participant", id: "DEMO-001", team: "SVNIT ACM" }
     ];
@@ -1003,7 +1199,6 @@ export default function CardStudioApp() {
                                 (d) => d.layout_name === layout.id && d.theme_name === themeId
                               );
                               const isTopNLP = draftIdx === 0;
-                              const isSelected = draftIdx !== -1 && selectedDraftIndex === draftIdx;
                               const currentDraft = draftIdx !== -1 ? drafts[draftIdx] : null;
                               const colors = currentDraft?.theme?.colors || {
                                 primary: "#1F6FEB",
@@ -1011,6 +1206,9 @@ export default function CardStudioApp() {
                                 background: "#FFFFFF",
                                 text: "#0B1220",
                               };
+
+                              const isSelected =
+                                draftIdx !== -1 && selectedDraftIndex === draftIdx && !selectedCustomLayoutId;
 
                               return (
                                 <td
@@ -1021,7 +1219,10 @@ export default function CardStudioApp() {
                                       : "hover:bg-white/5"
                                   }`}
                                   onClick={() => {
-                                    if (draftIdx !== -1) setSelectedDraftIndex(draftIdx);
+                                    if (draftIdx !== -1) {
+                                      setSelectedDraftIndex(draftIdx);
+                                      setSelectedCustomLayoutId(null);
+                                    }
                                   }}
                                 >
                                   <div className="flex flex-col items-center space-y-2">
@@ -1077,7 +1278,10 @@ export default function CardStudioApp() {
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          if (draftIdx !== -1) setSelectedDraftIndex(draftIdx);
+                                          if (draftIdx !== -1) {
+                                            setSelectedDraftIndex(draftIdx);
+                                            setSelectedCustomLayoutId(null);
+                                          }
                                           setStep4ViewMode("editor");
                                           setCurrentStep(4);
                                         }}
@@ -1096,6 +1300,252 @@ export default function CardStudioApp() {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* USER CUSTOM LAYOUTS & STYLING VARIATIONS */}
+                  <div className="mt-8 pt-6 border-t border-white/10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h3 className="text-sm font-semibold text-[#FAFAFA] flex items-center space-x-2">
+                            <span>🎨</span>
+                            <span>Custom Layouts & Saved Variations</span>
+                          </h3>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30">
+                            {customLayouts.length} Saved
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#A1A1AA] mt-0.5">
+                          Customized designs derived from the Spec Editor. Modifications are detected and saved here without altering the standard 9 combinations.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleCreateNewCustomLayout}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white/5 border border-white/15 text-[#FAFAFA] hover:bg-white/10 hover:border-white/30 transition flex items-center space-x-1.5 self-start sm:self-auto shadow-xs"
+                      >
+                        <span>➕</span>
+                        <span>Create Blank Custom Layout</span>
+                      </button>
+                    </div>
+
+                    {customLayouts.length === 0 ? (
+                      <div className="border border-dashed border-white/15 rounded-2xl p-6 text-center bg-[#121214]/50 space-y-2">
+                        <div className="text-2xl">✨</div>
+                        <p className="text-xs text-[#A1A1AA]">
+                          No custom layouts created yet. Any adjustments made to elements, background images, decals, or palettes in the Spec Editor are automatically detected and added as custom layout options.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStep4ViewMode("editor");
+                            setCurrentStep(4);
+                          }}
+                          className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white/5 border border-white/15 text-white hover:bg-white/10 transition"
+                        >
+                          Customize in Spec Editor →
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {customLayouts.map((custom) => {
+                          const isSelected = selectedCustomLayoutId === custom.id;
+                          const colors = custom.spec.theme?.colors || {
+                            primary: "#1F6FEB",
+                            secondary: "#EAF1FD",
+                            background: "#FFFFFF",
+                            accent: "#38BDF8",
+                            text: "#0B1220",
+                          };
+                          const hasBgImage = (custom.spec.elements || []).some(
+                            (el: any) => el.id === "bg_image" || el.is_background
+                          );
+                          const decalCount = (custom.spec.elements || []).filter(
+                            (el: any) => el.type === "image" || el.id?.startsWith("decal_")
+                          ).length;
+
+                          return (
+                            <div
+                              key={custom.id}
+                              onClick={() => setSelectedCustomLayoutId(custom.id)}
+                              className={`cursor-pointer rounded-2xl border p-4 transition relative flex flex-col justify-between ${
+                                isSelected
+                                  ? "border-purple-400/80 ring-2 ring-purple-400/30 bg-[#16141c]"
+                                  : "border-white/10 hover:border-white/20 bg-[#181818]"
+                              }`}
+                            >
+                              <div>
+                                {/* Header with Title and Rename */}
+                                <div className="flex items-start justify-between gap-2 mb-2.5">
+                                  <div className="flex-1 min-w-0">
+                                    {editingCustomLayoutNameId === custom.id ? (
+                                      <div
+                                        className="flex items-center space-x-1.5"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <input
+                                          type="text"
+                                          autoFocus
+                                          value={customLayoutTempName}
+                                          onChange={(e) => setCustomLayoutTempName(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                              handleRenameCustomLayout(custom.id, customLayoutTempName);
+                                            }
+                                            if (e.key === "Escape") {
+                                              setEditingCustomLayoutNameId(null);
+                                            }
+                                          }}
+                                          className="bg-[#121214] border border-white/30 text-white text-xs px-2 py-1 rounded outline-none w-full"
+                                          placeholder="Layout Name..."
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleRenameCustomLayout(custom.id, customLayoutTempName)
+                                          }
+                                          className="px-2 py-1 bg-white text-black text-[10px] font-bold rounded hover:bg-slate-200"
+                                          title="Save name"
+                                        >
+                                          ✓
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditingCustomLayoutNameId(null)}
+                                          className="px-1.5 py-1 text-white/50 hover:text-white text-[10px]"
+                                          title="Cancel"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center space-x-2 group">
+                                        <span
+                                          className="text-xs font-semibold text-[#FAFAFA] truncate"
+                                          title={custom.name}
+                                        >
+                                          {custom.name}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingCustomLayoutNameId(custom.id);
+                                            setCustomLayoutTempName(custom.name);
+                                          }}
+                                          className="text-[10px] text-[#A1A1AA] hover:text-white transition opacity-60 group-hover:opacity-100"
+                                          title="Rename custom layout"
+                                        >
+                                          ✏️
+                                        </button>
+                                      </div>
+                                    )}
+                                    <span className="text-[10px] font-mono text-[#696970] block mt-0.5">
+                                      Derived from: {custom.baseLayout.toUpperCase()} •{" "}
+                                      {custom.baseTheme.replace("_", " ").toUpperCase()}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center space-x-1 shrink-0">
+                                    {isSelected && (
+                                      <span className="bg-purple-500 text-white text-[9px] font-mono font-bold px-2 py-0.5 rounded-full">
+                                        ✓ Active
+                                      </span>
+                                    )}
+                                    <span className="bg-purple-500/10 text-purple-300 border border-purple-500/30 text-[9px] font-mono px-1.5 py-0.5 rounded-full">
+                                      Custom
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Decorative Features Pills */}
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                  {hasBgImage && (
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950/40 border border-cyan-500/30 text-cyan-300">
+                                      🌌 Custom Background
+                                    </span>
+                                  )}
+                                  {decalCount > 0 && (
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-950/40 border border-amber-500/30 text-amber-300">
+                                      🎨 {decalCount} Decal{decalCount > 1 ? "s" : ""}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Palette Swatches */}
+                                <div className="flex items-center space-x-1 p-1 rounded-lg border border-white/10 bg-[#121214] w-fit mb-3">
+                                  {Object.entries(colors).slice(0, 5).map(([key, val]) => (
+                                    <div
+                                      key={key}
+                                      title={`${key}: ${val}`}
+                                      className="w-4 h-4 rounded-xs border border-white/10"
+                                      style={{ backgroundColor: String(val) }}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Actions */}
+                              <div className="pt-2 border-t border-white/5 space-y-1.5">
+                                <div className="flex items-center space-x-1.5">
+                                  <button
+                                    type="button"
+                                    className={`flex-1 py-1 rounded-full text-[11px] font-semibold transition ${
+                                      isSelected
+                                        ? "bg-purple-500 text-white"
+                                        : "bg-white/5 border border-white/10 text-[#A1A1AA] hover:text-white hover:bg-white/10"
+                                    }`}
+                                  >
+                                    {isSelected ? "Active Draft" : "Select Layout"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedCustomLayoutId(custom.id);
+                                      setStep4ViewMode("editor");
+                                      setCurrentStep(4);
+                                    }}
+                                    className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-white/5 border border-white/15 text-[#A1A1AA] hover:text-white hover:bg-white/10 transition"
+                                    title="Edit in Visual Spec Editor"
+                                  >
+                                    🎨 Edit
+                                  </button>
+                                </div>
+
+                                <div className="flex justify-between items-center text-[10px] text-[#696970] pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDuplicateCustomLayout(custom.id);
+                                    }}
+                                    className="hover:text-[#FAFAFA] transition"
+                                    title="Duplicate this custom layout"
+                                  >
+                                    📋 Duplicate
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`Delete custom layout "${custom.name}"?`)) {
+                                        handleDeleteCustomLayout(custom.id);
+                                      }
+                                    }}
+                                    className="hover:text-rose-400 transition"
+                                    title="Delete this custom layout"
+                                  >
+                                    🗑️ Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 /* CARD GRID VIEW WITH FILTERS */
@@ -1104,7 +1554,7 @@ export default function CardStudioApp() {
                   <div className="flex flex-wrap items-center justify-between gap-3 bg-[#181818] border border-white/10 rounded-xl p-3">
                     <div className="flex items-center space-x-2">
                       <span className="text-xs font-mono uppercase text-[#696970]">Layout:</span>
-                      {["all", "classic", "minimal", "split"].map((l) => (
+                      {["all", "classic", "minimal", "split", ...(customLayouts.length > 0 ? ["custom"] : [])].map((l) => (
                         <button
                           key={l}
                           onClick={() => setDraftLayoutFilter(l)}
@@ -1114,7 +1564,7 @@ export default function CardStudioApp() {
                               : "bg-white/5 border border-white/10 text-[#A1A1AA] hover:text-white hover:bg-white/10"
                           }`}
                         >
-                          {l}
+                          {l === "custom" ? `🎨 Custom (${customLayouts.length})` : l}
                         </button>
                       ))}
                     </div>
@@ -1138,120 +1588,332 @@ export default function CardStudioApp() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {drafts
-                      .map((draft, idx) => ({ draft, idx }))
-                      .filter(({ draft }) => {
-                        if (draftLayoutFilter !== "all" && draft.layout_name !== draftLayoutFilter) return false;
-                        if (draftThemeFilter !== "all" && draft.theme_name !== draftThemeFilter) return false;
-                        return true;
-                      })
-                      .map(({ draft, idx }) => {
-                        const isSelected = selectedDraftIndex === idx;
-                        const isTopNLP = idx === 0;
-                        const colors = draft.theme?.colors || {
-                          primary: "#1F6FEB",
-                          secondary: "#EAF1FD",
-                          background: "#FFFFFF",
-                          accent: "#38BDF8",
-                          text: "#0B1220",
-                        };
+                    {/* CUSTOM LAYOUT CARDS */}
+                    {(draftLayoutFilter === "all" || draftLayoutFilter === "custom") &&
+                      customLayouts
+                        .filter((custom) => {
+                          if (draftThemeFilter !== "all" && custom.baseTheme !== draftThemeFilter) return false;
+                          return true;
+                        })
+                        .map((custom) => {
+                          const isSelected = selectedCustomLayoutId === custom.id;
+                          const colors = custom.spec.theme?.colors || {
+                            primary: "#1F6FEB",
+                            secondary: "#EAF1FD",
+                            background: "#FFFFFF",
+                            accent: "#38BDF8",
+                            text: "#0B1220",
+                          };
+                          const hasBgImage = Boolean((custom.spec as any).bg_image);
+                          const decalCount = (custom.spec.elements || []).filter(
+                            (el: any) => el.type === "image" || (el.type === "logo" && el.src?.includes("/art/"))
+                          ).length;
 
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => setSelectedDraftIndex(idx)}
-                            className={`cursor-pointer rounded-2xl border p-5 transition relative flex flex-col justify-between ${
-                              isSelected
-                                ? "border-white ring-1 ring-white bg-[#181818]"
-                                : "border-white/10 hover:border-white/20 bg-[#181818]"
-                            }`}
-                          >
-                            <div>
-                              <div className="flex justify-between items-center mb-3">
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-xs font-mono text-[#FAFAFA] font-semibold">
-                                    Combo #{idx + 1}
+                          return (
+                            <div
+                              key={custom.id}
+                              onClick={() => setSelectedCustomLayoutId(custom.id)}
+                              className={`cursor-pointer rounded-2xl border p-5 transition relative flex flex-col justify-between ${
+                                isSelected
+                                  ? "border-purple-400 ring-2 ring-purple-500/50 bg-[#191522]"
+                                  : "border-purple-500/20 hover:border-purple-500/40 bg-[#16141c]"
+                              }`}
+                            >
+                              <div>
+                                <div className="flex justify-between items-start mb-3 gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    {editingCustomLayoutNameId === custom.id ? (
+                                      <div
+                                        className="flex items-center space-x-1.5"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <input
+                                          type="text"
+                                          autoFocus
+                                          value={customLayoutTempName}
+                                          onChange={(e) => setCustomLayoutTempName(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                              handleRenameCustomLayout(custom.id, customLayoutTempName);
+                                            }
+                                            if (e.key === "Escape") {
+                                              setEditingCustomLayoutNameId(null);
+                                            }
+                                          }}
+                                          className="bg-[#121214] border border-white/30 text-white text-xs px-2 py-1 rounded outline-none w-full"
+                                          placeholder="Layout Name..."
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRenameCustomLayout(custom.id, customLayoutTempName)}
+                                          className="px-2 py-1 bg-white text-black text-[10px] font-bold rounded hover:bg-slate-200"
+                                          title="Save name"
+                                        >
+                                          ✓
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditingCustomLayoutNameId(null)}
+                                          className="px-1.5 py-1 text-white/50 hover:text-white text-[10px]"
+                                          title="Cancel"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center space-x-2 group">
+                                        <span className="text-sm font-semibold text-[#FAFAFA] truncate" title={custom.name}>
+                                          {custom.name}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingCustomLayoutNameId(custom.id);
+                                            setCustomLayoutTempName(custom.name);
+                                          }}
+                                          className="text-xs text-[#A1A1AA] hover:text-white transition opacity-60 group-hover:opacity-100"
+                                          title="Rename custom layout"
+                                        >
+                                          ✏️
+                                        </button>
+                                      </div>
+                                    )}
+                                    <span className="text-[11px] font-mono text-[#A1A1AA] block mt-0.5">
+                                      Derived from: {custom.baseLayout.toUpperCase()} • {custom.baseTheme.replace("_", " ").toUpperCase()}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center space-x-1.5 shrink-0">
+                                    {isSelected && (
+                                      <span className="text-xs font-mono font-bold text-white bg-purple-500 px-2 py-0.5 rounded-full">
+                                        Selected
+                                      </span>
+                                    )}
+                                    <span className="bg-purple-500/10 text-purple-300 border border-purple-500/30 text-[10px] font-mono px-2 py-0.5 rounded-full">
+                                      Custom
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                  {hasBgImage && (
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950/40 border border-cyan-500/30 text-cyan-300">
+                                      🌌 Custom Background
+                                    </span>
+                                  )}
+                                  {decalCount > 0 && (
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-950/40 border border-amber-500/30 text-amber-300">
+                                      🎨 {decalCount} Decal{decalCount > 1 ? "s" : ""}
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[#A1A1AA]">
+                                    {custom.spec.page.width_mm} × {custom.spec.page.height_mm} mm
                                   </span>
-                                  {isTopNLP && (
-                                    <span className="bg-amber-500/10 text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded-full border border-amber-500/30">
-                                      ✨ Recommended
+                                </div>
+
+                                <div className="mt-3 pt-3 border-t border-white/10">
+                                  <span className="text-[10px] font-mono text-[#696970] uppercase tracking-wider block mb-2">
+                                    Color Palette
+                                  </span>
+                                  <div className="flex space-x-1.5">
+                                    {Object.entries(colors).slice(0, 5).map(([key, val]) => (
+                                      <div
+                                        key={key}
+                                        title={`${key}: ${val}`}
+                                        className="w-6 h-6 rounded-md border border-white/10 shadow-xs"
+                                        style={{ backgroundColor: String(val) }}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-5 space-y-2">
+                                <button
+                                  type="button"
+                                  className={`w-full py-2 rounded-full text-xs font-semibold transition ${
+                                    isSelected
+                                      ? "bg-purple-500 text-white"
+                                      : "bg-white/5 border border-white/10 text-[#A1A1AA] hover:text-white hover:bg-white/10"
+                                  }`}
+                                >
+                                  {isSelected ? "Active Custom Layout" : "Select This Custom Layout"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedCustomLayoutId(custom.id);
+                                    setStep4ViewMode("editor");
+                                    setCurrentStep(4);
+                                  }}
+                                  className="w-full py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/15 text-[#A1A1AA] hover:text-white hover:bg-white/10 transition flex items-center justify-center space-x-1.5"
+                                >
+                                  <span>🎨</span>
+                                  <span>Fine-tune in Spec Editor</span>
+                                </button>
+
+                                <div className="flex justify-between items-center text-[11px] text-[#696970] pt-1 px-1">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDuplicateCustomLayout(custom.id);
+                                    }}
+                                    className="hover:text-[#FAFAFA] transition"
+                                    title="Duplicate this custom layout"
+                                  >
+                                    📋 Duplicate
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`Delete custom layout "${custom.name}"?`)) {
+                                        handleDeleteCustomLayout(custom.id);
+                                      }
+                                    }}
+                                    className="hover:text-rose-400 transition"
+                                    title="Delete this custom layout"
+                                  >
+                                    🗑️ Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                    {draftLayoutFilter === "custom" && customLayouts.length === 0 && (
+                      <div className="col-span-full py-12 text-center bg-[#181818] rounded-2xl border border-dashed border-white/10 p-6">
+                        <p className="text-sm text-[#A1A1AA]">No custom layouts saved yet.</p>
+                        <p className="text-xs text-[#696970] mt-1">
+                          Edit any standard combination in the Visual Spec Editor. Any modifications will automatically create a custom layout here without changing base combos!
+                        </p>
+                      </div>
+                    )}
+
+                    {/* BASE 9 COMBINATIONS (UNTOUCHED) */}
+                    {draftLayoutFilter !== "custom" &&
+                      drafts
+                        .map((draft, idx) => ({ draft, idx }))
+                        .filter(({ draft }) => {
+                          if (draftLayoutFilter !== "all" && draft.layout_name !== draftLayoutFilter) return false;
+                          if (draftThemeFilter !== "all" && draft.theme_name !== draftThemeFilter) return false;
+                          return true;
+                        })
+                        .map(({ draft, idx }) => {
+                          const isSelected = selectedDraftIndex === idx && !selectedCustomLayoutId;
+                          const isTopNLP = idx === 0;
+                          const colors = draft.theme?.colors || {
+                            primary: "#1F6FEB",
+                            secondary: "#EAF1FD",
+                            background: "#FFFFFF",
+                            accent: "#38BDF8",
+                            text: "#0B1220",
+                          };
+
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => {
+                                setSelectedDraftIndex(idx);
+                                setSelectedCustomLayoutId(null);
+                              }}
+                              className={`cursor-pointer rounded-2xl border p-5 transition relative flex flex-col justify-between ${
+                                isSelected
+                                  ? "border-white ring-1 ring-white bg-[#181818]"
+                                  : "border-white/10 hover:border-white/20 bg-[#181818]"
+                              }`}
+                            >
+                              <div>
+                                <div className="flex justify-between items-center mb-3">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs font-mono text-[#FAFAFA] font-semibold">
+                                      Combo #{idx + 1}
+                                    </span>
+                                    {isTopNLP && (
+                                      <span className="bg-amber-500/10 text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded-full border border-amber-500/30">
+                                        ✨ Recommended
+                                      </span>
+                                    )}
+                                  </div>
+                                  {isSelected && (
+                                    <span className="text-xs font-mono font-bold text-black bg-white px-2 py-0.5 rounded-full">
+                                      Selected
                                     </span>
                                   )}
                                 </div>
-                                {isSelected && (
-                                  <span className="text-xs font-mono font-bold text-black bg-white px-2 py-0.5 rounded-full">
-                                    Selected
+
+                                <div className="space-y-1.5 text-xs text-[#A1A1AA]">
+                                  <div className="flex justify-between">
+                                    <span className="text-[#696970]">Layout:</span>
+                                    <span className="font-semibold text-white capitalize">
+                                      {draft.layout_name}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-[#696970]">Theme:</span>
+                                    <span className="font-semibold text-white capitalize">
+                                      {draft.theme_name.replace("_", " ")}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-[#696970]">Page:</span>
+                                    <span className="font-mono">
+                                      {draft.page.width_mm} × {draft.page.height_mm} mm
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Swatches */}
+                                <div className="mt-4 pt-4 border-t border-white/10">
+                                  <span className="text-[10px] font-mono text-[#696970] uppercase tracking-wider block mb-2">
+                                    Color Palette
                                   </span>
-                                )}
+                                  <div className="flex space-x-1.5">
+                                    {Object.entries(colors).map(([key, val]) => (
+                                      <div
+                                        key={key}
+                                        title={`${key}: ${val}`}
+                                        className="w-6 h-6 rounded-md border border-white/10 shadow-xs"
+                                        style={{ backgroundColor: String(val) }}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
 
-                              <div className="space-y-1.5 text-xs text-[#A1A1AA]">
-                                <div className="flex justify-between">
-                                  <span className="text-[#696970]">Layout:</span>
-                                  <span className="font-semibold text-white capitalize">
-                                    {draft.layout_name}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-[#696970]">Theme:</span>
-                                  <span className="font-semibold text-white capitalize">
-                                    {draft.theme_name.replace("_", " ")}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-[#696970]">Page:</span>
-                                  <span className="font-mono">
-                                    {draft.page.width_mm} × {draft.page.height_mm} mm
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Swatches */}
-                              <div className="mt-4 pt-4 border-t border-white/10">
-                                <span className="text-[10px] font-mono text-[#696970] uppercase tracking-wider block mb-2">
-                                  Color Palette
-                                </span>
-                                <div className="flex space-x-1.5">
-                                  {Object.entries(colors).map(([key, val]) => (
-                                    <div
-                                      key={key}
-                                      title={`${key}: ${val}`}
-                                      className="w-6 h-6 rounded-md border border-white/10 shadow-xs"
-                                      style={{ backgroundColor: String(val) }}
-                                    />
-                                  ))}
-                                </div>
+                              <div className="mt-5 space-y-2">
+                                <button
+                                  type="button"
+                                  className={`w-full py-2 rounded-full text-xs font-semibold transition ${
+                                    isSelected
+                                      ? "bg-white text-black"
+                                      : "bg-white/5 border border-white/10 text-[#A1A1AA] hover:text-white hover:bg-white/10"
+                                  }`}
+                                >
+                                  {isSelected ? "Active Draft" : "Select This Combination"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedDraftIndex(idx);
+                                    setSelectedCustomLayoutId(null);
+                                    setStep4ViewMode("editor");
+                                    setCurrentStep(4);
+                                  }}
+                                  className="w-full py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/15 text-[#A1A1AA] hover:text-white hover:bg-white/10 transition flex items-center justify-center space-x-1.5"
+                                >
+                                  <span>🎨</span>
+                                  <span>Fine-tune in Spec Editor</span>
+                                </button>
                               </div>
                             </div>
-
-                            <div className="mt-5 space-y-2">
-                              <button
-                                type="button"
-                                className={`w-full py-2 rounded-full text-xs font-semibold transition ${
-                                  isSelected
-                                    ? "bg-white text-black"
-                                    : "bg-white/5 border border-white/10 text-[#A1A1AA] hover:text-white hover:bg-white/10"
-                                }`}
-                              >
-                                {isSelected ? "Active Draft" : "Select This Combination"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedDraftIndex(idx);
-                                  setStep4ViewMode("editor");
-                                  setCurrentStep(4);
-                                }}
-                                className="w-full py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/15 text-[#A1A1AA] hover:text-white hover:bg-white/10 transition flex items-center justify-center space-x-1.5"
-                              >
-                                <span>🎨</span>
-                                <span>Fine-tune in Spec Editor</span>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                   </div>
                 </div>
               )}
@@ -1331,35 +1993,49 @@ export default function CardStudioApp() {
               {/* VIEW MODE 1: VISUAL SPEC EDITOR */}
               {step4ViewMode === "editor" && (
                 <VisualSpecEditor
-                  initialSpec={drafts[selectedDraftIndex] || FALLBACK_DEFAULT_SPEC}
+                  initialSpec={activeSpec || FALLBACK_DEFAULT_SPEC}
                   attendees={people}
-                  onApplySpec={(updatedSpec) => {
-                    const nextDrafts = drafts.length > 0 ? [...drafts] : [updatedSpec];
-                    nextDrafts[selectedDraftIndex] = updatedSpec;
-                    setDrafts(nextDrafts);
-                    setSpecCustomizedBanner(
-                      "Design Spec customized and saved to active draft! Your adjustments will be included in batch export."
-                    );
-                    setTimeout(() => setSpecCustomizedBanner(null), 6000);
-                  }}
+                  onApplySpec={handleApplySpecFromEditor}
+                  onChangeSpec={(updated) => setEditorWorkingSpec(updated)}
                 />
               )}
 
               {/* VIEW MODE 2: QUICK PREVIEW & QA DIAGNOSTICS */}
               {step4ViewMode === "preview" && (
                 <div className="space-y-6">
+                  {/* Custom Layout Indicator Banner */}
+                  {activeCustomLayout && (
+                    <div className="bg-purple-950/40 border border-purple-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+                      <div className="flex items-center space-x-2 text-xs">
+                        <span className="text-purple-300 font-bold">🎨 Custom Layout Active:</span>
+                        <span className="font-semibold text-white">{activeCustomLayout.name}</span>
+                        <span className="text-purple-400 font-mono text-[11px]">
+                          (Base: {activeCustomLayout.baseLayout.toUpperCase()} • {activeCustomLayout.baseTheme.replace("_", " ").toUpperCase()})
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCustomLayoutId(null)}
+                        className="px-3 py-1 text-xs font-medium bg-white/10 hover:bg-white/20 text-white rounded-full transition"
+                      >
+                        Reset to Standard Combos
+                      </button>
+                    </div>
+                  )}
+
                   {/* Quick Layout & Theme Switcher (3x3 Combos) */}
                   <div className="bg-[#181818] border border-white/10 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
                     <div className="flex items-center space-x-2">
                       <span className="text-xs font-semibold text-[#A1A1AA] uppercase tracking-wider">Layout:</span>
                       {(["classic", "minimal", "split"] as const).map((l) => {
                         const currentDraft = drafts[selectedDraftIndex];
-                        const isActive = currentDraft?.layout_name === l;
+                        const isActive = !selectedCustomLayoutId && currentDraft?.layout_name === l;
                         return (
                           <button
                             key={l}
                             type="button"
                             onClick={() => {
+                              setSelectedCustomLayoutId(null);
                               const currentTheme = currentDraft?.theme_name || "clean_light";
                               const targetIdx = drafts.findIndex(
                                 (d) => d.layout_name === l && d.theme_name === currentTheme
@@ -1387,13 +2063,14 @@ export default function CardStudioApp() {
                       <span className="text-xs font-semibold text-[#A1A1AA] uppercase tracking-wider">Theme:</span>
                       {(["clean_light", "dark_tech", "bold_event"] as const).map((t) => {
                         const currentDraft = drafts[selectedDraftIndex];
-                        const isActive = currentDraft?.theme_name === t;
+                        const isActive = !selectedCustomLayoutId && currentDraft?.theme_name === t;
                         const label = t === "clean_light" ? "Clean Light" : t === "dark_tech" ? "Dark Tech" : "Bold Event";
                         return (
                           <button
                             key={t}
                             type="button"
                             onClick={() => {
+                              setSelectedCustomLayoutId(null);
                               const currentLayout = currentDraft?.layout_name || "classic";
                               const targetIdx = drafts.findIndex(
                                 (d) => d.layout_name === currentLayout && d.theme_name === t
@@ -1716,8 +2393,8 @@ export default function CardStudioApp() {
                       <span className="font-semibold text-[#FAFAFA] block uppercase tracking-wider text-[11px]">Batch Overview:</span>
                       <div className="grid grid-cols-2 gap-2 text-[#A1A1AA] pt-1 font-mono">
                         <div>• Total Attendees: <strong className="text-[#FAFAFA]">{people.length || 1}</strong></div>
-                        <div>• Selected Layout: <strong className="text-[#FAFAFA]">{drafts[selectedDraftIndex]?.layout_name || "classic"}</strong></div>
-                        <div>• Selected Theme: <strong className="text-[#FAFAFA]">{drafts[selectedDraftIndex]?.theme_name || "clean_light"}</strong></div>
+                        <div>• Selected Layout: <strong className="text-[#FAFAFA]">{activeCustomLayout ? `🎨 ${activeCustomLayout.name} (Custom)` : (drafts[selectedDraftIndex]?.layout_name || "classic")}</strong></div>
+                        <div>• Selected Theme: <strong className="text-[#FAFAFA]">{activeCustomLayout ? activeCustomLayout.baseTheme.replace("_", " ") : (drafts[selectedDraftIndex]?.theme_name.replace("_", " ") || "clean light")}</strong></div>
                         <div>• Output: <strong className="text-[#FAFAFA]">{collatePdf ? "Single cards.pdf" : "cards.zip Archive"}</strong></div>
                       </div>
                     </div>
@@ -1790,6 +2467,7 @@ export default function CardStudioApp() {
                         <span className="font-semibold text-[#FAFAFA] block uppercase tracking-wider text-[11px]">Print Sheet Imposition Details:</span>
                         <div className="grid grid-cols-2 gap-2 text-[#A1A1AA] pt-1 font-mono">
                           <div>• Total Attendees: <strong className="text-[#FAFAFA]">{people.length || 1}</strong></div>
+                          <div>• Imposed Design: <strong className="text-[#FAFAFA]">{activeCustomLayout ? `🎨 ${activeCustomLayout.name}` : (drafts[selectedDraftIndex]?.layout_name || "classic")}</strong></div>
                           <div>• Grid Layout: <strong className="text-[#FAFAFA]">{printSheetPage === "A4" ? "3 cols × 3 rows (9/page)" : "4 cols × 4 rows (16/page)"}</strong></div>
                           <div>• Total Imposed Pages: <strong className="text-[#FAFAFA]">{Math.ceil((people.length || 1) / (printSheetPage === "A4" ? 9 : 16))} sheet(s)</strong></div>
                           <div>• Technical Margins: <strong className="text-[#FAFAFA]">{printSheetPage === "A4" ? "X: 15mm, Y: 10.5mm" : "X: 28.5mm, Y: 26mm"}</strong></div>
