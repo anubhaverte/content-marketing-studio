@@ -714,7 +714,9 @@ export default function VisualSpecEditor({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleUndo, handleRedo, selectedElementId, selectedElement]);
+
 
   // --- Element Mutation Functions ---
 

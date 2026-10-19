@@ -85,16 +85,26 @@ def build_svg(spec: DesignSpec, person: Person, debug_guides: bool = False) -> s
                 )
             )
         elif isinstance(element, LogoEl):
-            path = _logo_path(spec, element)
-            fragments.append(
-                draw_logo(
-                    element,
-                    file_to_data_uri(path),
-                    _asset_aspect_ratio(path),
-                    element_id,
-                    element.src,
+            try:
+                path = _logo_path(spec, element)
+                fragments.append(
+                    draw_logo(
+                        element,
+                        file_to_data_uri(path),
+                        _asset_aspect_ratio(path),
+                        element_id,
+                        element.src,
+                    )
                 )
-            )
+            except (FileNotFoundError, ValueError) as err:
+                # Essential organization logos must exist (Rule 4)
+                if element.src in ("acm", "svnit", "acm_nitsurat"):
+                    raise
+                warnings.warn(
+                    f"Decorative element {element_id} ({element.src!r}) could not be rendered: {err}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
         elif isinstance(element, RoleBadgeEl):
             label, icon = _role_info(role)
             if role not in spec.theme.role_colors:
@@ -119,10 +129,18 @@ def build_svg(spec: DesignSpec, person: Person, debug_guides: bool = False) -> s
             if payload:
                 fragments.append(draw_qr(element, payload, spec.theme, role, element_id))
         elif isinstance(element, SvgAssetEl):
-            path = _svg_asset_path(element.src)
-            fragments.append(draw_svg_asset(element, file_to_data_uri(path), element_id))
+            try:
+                path = _svg_asset_path(element.src)
+                fragments.append(draw_svg_asset(element, file_to_data_uri(path), element_id))
+            except (FileNotFoundError, ValueError) as err:
+                warnings.warn(
+                    f"SVG asset {element_id} ({element.src!r}) could not be rendered: {err}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
         else:
             raise TypeError(f"Unsupported layout element model: {type(element).__name__}")
+
 
     width = spec.page.canvas_w_mm
     height = spec.page.canvas_h_mm

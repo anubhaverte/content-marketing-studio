@@ -483,7 +483,9 @@ export default function CardStudioApp() {
     if (currentStep === 4 && (drafts.length > 0 || customLayouts.length > 0)) {
       handleRenderPreview();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, selectedDraftIndex, selectedCustomLayoutId, currentPersonIndex, showDebugGuides]);
+
 
   async function handleBatchExport() {
     const spec = activeSpec;

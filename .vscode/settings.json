@@ -1,16 +1,33 @@
 {
+  "python.defaultInterpreterPath": "./.venv/Scripts/python.exe",
+  "python.analysis.extraPaths": [
+    "./backend",
+    "."
+  ],
+  "python.autoComplete.extraPaths": [
+    "./backend",
+    "."
+  ],
   "json.schemas": [
     {
       "fileMatch": [
-        "/backend/app/templates/layouts/*.json"
+        "/backend/app/templates/layouts/*.json",
+        "/templates/layouts/*.json"
       ],
       "url": "./docs/schemas/layout.schema.json"
     },
     {
       "fileMatch": [
-        "/backend/app/templates/themes/*.json"
+        "/backend/app/templates/themes/*.json",
+        "/templates/themes/*.json"
       ],
       "url": "./docs/schemas/theme.schema.json"
+    },
+    {
+      "fileMatch": [
+        "/docs/schemas/*.schema.json"
+      ],
+      "url": "http://json-schema.org/draft-07/schema#"
     }
   ]
 }

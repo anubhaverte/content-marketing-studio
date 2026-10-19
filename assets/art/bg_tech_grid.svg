@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 92" width="60mm" height="92mm">
+  <defs>
+    <pattern id="techGrid" width="6" height="6" patternUnits="userSpaceOnUse">
+      <path d="M 6 0 L 0 0 0 6" fill="none" stroke="#38BDF8" stroke-width="0.15" stroke-opacity="0.35"/>
+      <circle cx="6" cy="6" r="0.4" fill="#38BDF8" fill-opacity="0.5"/>
+    </pattern>
+    <linearGradient id="gridFade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#38BDF8" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#1E293B" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+  <rect width="60" height="92" fill="url(#techGrid)"/>
+  <path d="M 0 15 L 20 15 L 28 23 L 60 23" fill="none" stroke="#38BDF8" stroke-width="0.3" stroke-opacity="0.4" stroke-dasharray="2 1"/>
+  <path d="M 0 75 L 35 75 L 42 82 L 60 82" fill="none" stroke="#818CF8" stroke-width="0.3" stroke-opacity="0.4"/>
+  <circle cx="28" cy="23" r="0.8" fill="#38BDF8" fill-opacity="0.8"/>
+  <circle cx="35" cy="75" r="0.8" fill="#818CF8" fill-opacity="0.8"/>
+</svg>

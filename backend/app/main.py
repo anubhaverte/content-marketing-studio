@@ -64,4 +64,5 @@ for module_info in sorted(pkgutil.iter_modules(api_pkg.__path__), key=lambda m: 
         if hasattr(mod, "router"):
             app.include_router(mod.router)
             # Also mount under /api prefix for dual-mode Vercel routing
-            app.include_router(mod.router, prefix="/api")
+            app.include_router(mod.router, prefix="/api", include_in_schema=False)
+

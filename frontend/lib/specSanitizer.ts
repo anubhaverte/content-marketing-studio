@@ -4,14 +4,14 @@ const VALID_BACKEND_LAYOUTS = ["classic", "minimal", "split"];
 const VALID_BACKEND_THEMES = ["clean_light", "dark_tech", "bold_event"];
 
 const KNOWN_PRESET_FILES: Record<string, string> = {
-  decal_terminal: "frontend/public/art/decal_terminal.svg",
-  decal_star: "frontend/public/art/decal_star.svg",
-  decal_shield: "frontend/public/art/decal_shield.svg",
-  decal_chip: "frontend/public/art/decal_chip.svg",
-  bg_tech_grid: "frontend/public/art/bg_tech_grid.svg",
-  bg_circuit_lines: "frontend/public/art/bg_circuit_lines.svg",
-  bg_geometric_mesh: "frontend/public/art/bg_geometric_mesh.svg",
-  bg_svnit_watermark: "frontend/public/art/bg_svnit_watermark.svg",
+  decal_terminal: "assets/art/decal_terminal.svg",
+  decal_star: "assets/art/decal_star.svg",
+  decal_shield: "assets/art/decal_shield.svg",
+  decal_chip: "assets/art/decal_chip.svg",
+  bg_tech_grid: "assets/art/bg_tech_grid.svg",
+  bg_circuit_lines: "assets/art/bg_circuit_lines.svg",
+  bg_geometric_mesh: "assets/art/bg_geometric_mesh.svg",
+  bg_svnit_watermark: "assets/art/bg_svnit_watermark.svg",
   logo_acm: "assets/logos/acm_nitsurat.svg",
   logo_svnit: "assets/logos/svnit.svg",
   acm_nitsurat: "assets/logos/acm_nitsurat.svg",
@@ -38,7 +38,7 @@ function resolveLogoKeyAndPath(
     const baseKey = filename.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_]/g, "_");
     return {
       key: baseKey,
-      repoPath: `frontend/public/art/${filename}`,
+      repoPath: `assets/art/${filename}`,
     };
   }
 
@@ -47,7 +47,7 @@ function resolveLogoKeyAndPath(
     const baseKey = filename.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_]/g, "_");
     return {
       key: baseKey,
-      repoPath: `frontend/public/logos/${filename}`,
+      repoPath: `assets/logos/${filename}`,
     };
   }
 
@@ -56,7 +56,16 @@ function resolveLogoKeyAndPath(
     const baseKey = filename.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_]/g, "_");
     return {
       key: baseKey,
-      repoPath: src,
+      repoPath: `assets/art/${filename}`,
+    };
+  }
+
+  if (src.startsWith("frontend/public/logos/")) {
+    const filename = src.replace("frontend/public/logos/", "");
+    const baseKey = filename.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_]/g, "_");
+    return {
+      key: baseKey,
+      repoPath: `assets/logos/${filename}`,
     };
   }
 
@@ -73,9 +82,10 @@ function resolveLogoKeyAndPath(
   const cleanId = (elementId || "decal").replace(/[^a-zA-Z0-9_]/g, "_");
   return {
     key: cleanId,
-    repoPath: `frontend/public/art/${src}`,
+    repoPath: `assets/art/${src}`,
   };
 }
+
 
 /**
  * Validates that an element color/fill/stroke uses canonical theme token names,
@@ -162,11 +172,15 @@ export function sanitizeSpecForBackend(rawSpec: DesignSpec): DesignSpec {
   if (rawBgEl) {
     const rawSrc = rawBgEl.src || rawBgEl.url || "";
     const resolved = resolveLogoKeyAndPath(rawSrc, "bg_image");
-    const bgRepoPath =
+    let bgRepoPath =
       (cloned.brand?.logos && cloned.brand.logos[rawSrc]) ||
       (cloned.brand?.logos && cloned.brand.logos["bg_image"]) ||
       (cloned.brand?.logos && cloned.brand.logos["bg_custom"]) ||
-      (resolved ? resolved.repoPath : "frontend/public/art/bg_tech_grid.svg");
+      (resolved ? resolved.repoPath : "assets/art/bg_tech_grid.svg");
+
+    if (bgRepoPath.startsWith("frontend/public/art/")) {
+      bgRepoPath = bgRepoPath.replace("frontend/public/art/", "assets/art/");
+    }
 
     brandLogos["bg_image"] = bgRepoPath;
 
@@ -202,6 +216,18 @@ export function sanitizeSpecForBackend(rawSpec: DesignSpec): DesignSpec {
       }
     }
   });
+
+  // Normalize all brand logo paths: replace any legacy frontend/public/ paths with assets/
+  for (const [key, pathVal] of Object.entries(brandLogos)) {
+    if (typeof pathVal === "string") {
+      if (pathVal.startsWith("frontend/public/art/")) {
+        brandLogos[key] = pathVal.replace("frontend/public/art/", "assets/art/");
+      } else if (pathVal.startsWith("frontend/public/logos/")) {
+        brandLogos[key] = pathVal.replace("frontend/public/logos/", "assets/logos/");
+      }
+    }
+  }
+
 
   // 5. Sanitize elements strictly
   const sanitizedElements: any[] = [];
