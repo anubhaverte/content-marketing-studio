@@ -13,5 +13,6 @@ fastapi>=0.110.0
 uvicorn[standard]
 python-multipart
 reportlab
+svglib>=1.5.0
 httpx
 pytest

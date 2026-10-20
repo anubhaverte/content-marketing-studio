@@ -1,1 +1,2 @@
 # Person 2 extra dependencies. Add ONLY to your own file.
+svglib>=1.5.0

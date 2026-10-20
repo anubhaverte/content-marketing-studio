@@ -538,6 +538,8 @@ def render_print_sheet(payload: RenderPrintSheetRequest) -> Response:
             crop_marks=payload.crop_marks,
         )
         pdf_bytes = tmp_path.read_bytes()
+    except Exception as err:
+        raise HTTPException(status_code=422, detail=f"Failed creating print sheet: {err}") from err
     finally:
         if tmp_path.exists():
             tmp_path.unlink()

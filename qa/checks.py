@@ -454,18 +454,35 @@ def _check_resolution(
         round(canvas_width * dpi / 25.4),
         round(canvas_height * dpi / 25.4),
     )
-    import cairosvg
+    try:
+        import cairosvg
 
-    with tempfile.TemporaryDirectory(prefix="card-qa-") as directory:
-        png_path = Path(directory) / "card.png"
-        cairosvg.svg2png(bytestring=svg.encode("utf-8"), write_to=str(png_path), dpi=dpi)
-        with Image.open(png_path) as image:
-            actual = image.size
-    if actual != expected:
-        return [Issue(
-            "resolution", "error", person_id,
-            f"PNG resolution is {actual[0]} x {actual[1]} px; expected {expected[0]} x {expected[1]} px at {dpi} DPI for a 60 x 92 mm card.",
-        )]
+        with tempfile.TemporaryDirectory(prefix="card-qa-") as directory:
+            png_path = Path(directory) / "card.png"
+            cairosvg.svg2png(bytestring=svg.encode("utf-8"), write_to=str(png_path), dpi=dpi)
+            with Image.open(png_path) as image:
+                actual = image.size
+        if actual != expected:
+            return [Issue(
+                "resolution", "error", person_id,
+                f"PNG resolution is {actual[0]} x {actual[1]} px; expected {expected[0]} x {expected[1]} px at {dpi} DPI for a 60 x 92 mm card.",
+            )]
+    except (ImportError, OSError, RuntimeError):
+        # Native Cairo library unavailable in environment (e.g. serverless Vercel).
+        # Validate dimensions directly from SVG root element.
+        import re
+        w_match = re.search(r'width="([0-9.]+)mm"', svg)
+        h_match = re.search(r'height="([0-9.]+)mm"', svg)
+        if w_match and h_match:
+            svg_w_mm = float(w_match.group(1))
+            svg_h_mm = float(h_match.group(1))
+            actual_w = round(svg_w_mm * dpi / 25.4)
+            actual_h = round(svg_h_mm * dpi / 25.4)
+            if (actual_w, actual_h) != expected:
+                return [Issue(
+                    "resolution", "error", person_id,
+                    f"Card dimensions {svg_w_mm} x {svg_h_mm} mm yield {actual_w} x {actual_h} px; expected {expected[0]} x {expected[1]} px at {dpi} DPI.",
+                )]
     return []
 
 

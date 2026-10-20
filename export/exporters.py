@@ -45,9 +45,14 @@ def export_card(
     if settings.format == "svg":
         return svg.encode("utf-8")
 
-    cairosvg = _load_cairosvg()
     if settings.format == "pdf":
-        return cairosvg.svg2pdf(bytestring=svg.encode("utf-8"))
+        try:
+            from app.export.pdf import svg_to_pdf_bytes
+        except ImportError:
+            from backend.app.export.pdf import svg_to_pdf_bytes
+        return svg_to_pdf_bytes(svg)
+
+    cairosvg = _load_cairosvg()
     if settings.format == "png":
         return cairosvg.svg2png(bytestring=svg.encode("utf-8"), dpi=settings.dpi)
     raise ValueError(f"Unsupported export format: {settings.format}")

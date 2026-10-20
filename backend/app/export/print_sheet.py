@@ -105,10 +105,9 @@ def _build_page_svg(
         card_y = margin_y + row * CARD_H_MM
 
         inner_content = _extract_svg_inner(card_svg, global_card_idx)
-        # Nest card SVG with explicit coordinate box and viewport
+        # Nest card SVG with coordinate translation
         parts.append(
-            f'<svg x="{card_x:.2f}" y="{card_y:.2f}" width="{CARD_W_MM:.2f}" height="{CARD_H_MM:.2f}" '
-            f'viewBox="0 0 {CARD_W_MM:.2f} {CARD_H_MM:.2f}">{inner_content}</svg>'
+            f'<g transform="translate({card_x:.2f}, {card_y:.2f})">{inner_content}</g>'
         )
 
         if crop_marks:
@@ -143,7 +142,10 @@ def make_print_sheet(
     Returns:
         Path to the saved PDF file.
     """
-    import cairosvg
+    try:
+        from app.export.pdf import svg_to_pdf_bytes
+    except ImportError:
+        from backend.app.export.pdf import svg_to_pdf_bytes
 
     paper_key = page.strip().upper()
     if paper_key not in SHEET_DIMENSIONS:
@@ -179,7 +181,7 @@ def make_print_sheet(
             crop_marks=crop_marks,
         )
 
-        pdf_bytes = cairosvg.svg2pdf(bytestring=page_svg.encode("utf-8"))
+        pdf_bytes = svg_to_pdf_bytes(page_svg)
         page_pdfs.append(pdf_bytes)
 
     out_path = Path(out_path)
