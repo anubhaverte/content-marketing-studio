@@ -79,6 +79,14 @@ function resolveLogoKeyAndPath(
     };
   }
 
+  if (src.startsWith("data:")) {
+    const cleanId = (elementId || "custom_asset").replace(/[^a-zA-Z0-9_]/g, "_");
+    return {
+      key: cleanId,
+      repoPath: src,
+    };
+  }
+
   // If it's a generated element ID or arbitrary string
   const cleanId = (elementId || "decal").replace(/[^a-zA-Z0-9_]/g, "_");
   return {
@@ -167,11 +175,15 @@ export function sanitizeSpecForBackend(rawSpec: DesignSpec): DesignSpec {
     ...(cloned.brand?.logos || {}),
   };
 
-  // 3. Detect background image (either in elements or top-level bg_image)
+  // 3. Detect background image (either in elements, top-level bg_image, brand.logos, or dark_tech theme)
   let bgLogoElement: any = null;
-  const rawBgEl = (cloned.elements || []).find(
-    (el: any) => el.id === "bg_image" || el.is_background
-  ) || cloned.bg_image;
+  const rawBgEl =
+    (cloned.elements || []).find((el: any) => el.id === "bg_image" || el.is_background) ||
+    cloned.bg_image ||
+    (cloned.brand?.logos && cloned.brand.logos["bg_image"] ? { src: "bg_image" } : null) ||
+    (cloned.brand?.logos && cloned.brand.logos["bg_custom"] ? { src: "bg_custom" } : null) ||
+    (cloned.brand?.logos && cloned.brand.logos["bg_tech_grid"] ? { src: "bg_tech_grid" } : null) ||
+    (safeTheme === "dark_tech" ? { src: "bg_tech_grid" } : null);
 
   if (rawBgEl) {
     const rawSrc = rawBgEl.src || rawBgEl.url || "";
@@ -180,10 +192,13 @@ export function sanitizeSpecForBackend(rawSpec: DesignSpec): DesignSpec {
       (cloned.brand?.logos && cloned.brand.logos[rawSrc]) ||
       (cloned.brand?.logos && cloned.brand.logos["bg_image"]) ||
       (cloned.brand?.logos && cloned.brand.logos["bg_custom"]) ||
+      (cloned.brand?.logos && cloned.brand.logos["bg_tech_grid"]) ||
       (resolved ? resolved.repoPath : "assets/art/bg_tech_grid.svg");
 
     if (bgRepoPath.startsWith("frontend/public/art/")) {
       bgRepoPath = bgRepoPath.replace("frontend/public/art/", "assets/art/");
+    } else if (bgRepoPath.startsWith("/art/")) {
+      bgRepoPath = "assets" + bgRepoPath;
     }
 
     brandLogos["bg_image"] = bgRepoPath;

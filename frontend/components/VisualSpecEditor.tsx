@@ -334,21 +334,26 @@ export const DECAL_PRESETS = [
 function getElementImageSrc(el: LayoutElement, spec: DesignSpec): string {
   if (el.dataUrl && typeof el.dataUrl === "string") return el.dataUrl;
   if (el.src && typeof el.src === "string") {
+    if (el.src.startsWith("data:")) return el.src;
     // If it's a key in brand.logos
     const brandPath = spec.brand?.logos?.[el.src];
     if (brandPath) {
+      if (brandPath.startsWith("data:")) return brandPath;
       if (brandPath.startsWith("frontend/public/")) {
         return brandPath.replace("frontend/public", "");
       }
-      if (brandPath.startsWith("assets/logos/")) {
+      if (brandPath.startsWith("assets/")) {
         return "/" + brandPath.replace("assets/", "");
       }
-      return brandPath;
+      if (brandPath.startsWith("/")) return brandPath;
+      return "/" + brandPath;
     }
     // If it's a direct public or relative path
     if (el.src.startsWith("/")) return el.src;
     if (el.src.startsWith("art/")) return "/" + el.src;
+    if (el.src.startsWith("logos/")) return "/" + el.src;
     if (el.src.startsWith("frontend/public/")) return el.src.replace("frontend/public", "");
+    if (el.src.startsWith("assets/")) return "/" + el.src.replace("assets/", "");
     return el.src;
   }
   return "/art/bg_tech_grid.svg";

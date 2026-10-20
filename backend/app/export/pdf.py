@@ -56,12 +56,139 @@ def _resolve_asset_file(href: str) -> Path | None:
     return None
 
 
-def _prepare_svg_for_svglib(svg_text: str) -> str:
-    """Preprocess SVG so that embedded SVG data URIs and external SVG/raster references
+_REPORTLAB_INITIALIZED = False
 
-    in <image> tags are inlined as vector <g> or direct raster data URIs.
-    This enables 100% rendering fidelity in ReportLab / svglib without Cairo.
+
+def _init_reportlab_engine() -> None:
+    """Initialize ReportLab rendering engine with alpha transparency and project font mappings."""
+    global _REPORTLAB_INITIALIZED
+    if _REPORTLAB_INITIALIZED:
+        return
+    _REPORTLAB_INITIALIZED = True
+
+    # 1. Patch ReportLab drawImage to support RGBA alpha transparency (eliminates black squares on logos & photos)
+    try:
+        from reportlab.graphics.renderPDF import _PDFRenderer
+        from reportlab.lib.utils import ImageReader
+
+        orig_drawImage = getattr(_PDFRenderer, "drawImage", None)
+
+        def _patched_drawImage(self, image):
+            path = getattr(image, "path", None)
+            if path:
+                try:
+                    reader = ImageReader(path)
+                    self._canvas.drawImage(
+                        reader,
+                        image.x,
+                        image.y,
+                        image.width,
+                        image.height,
+                        mask="auto",
+                        preserveAspectRatio=True,
+                    )
+                    return
+                except Exception:
+                    pass
+            if orig_drawImage:
+                try:
+                    orig_drawImage(self, image)
+                    return
+                except Exception:
+                    pass
+            try:
+                self._canvas.drawInlineImage(path, image.x, image.y, image.width, image.height)
+            except Exception:
+                pass
+
+        _PDFRenderer.drawImage = _patched_drawImage
+    except Exception:
+        pass
+
+    # 2. Register bundled TrueType fonts with svglib and ReportLab pdfmetrics
+    try:
+        import svglib.svglib as s_lib
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+
+        root_dir = Path(__file__).resolve().parent.parent.parent.parent
+        font_dirs = [
+            root_dir / "assets" / "fonts",
+            Path.cwd() / "assets" / "fonts",
+            Path.cwd().parent / "assets" / "fonts",
+        ]
+
+        font_registrations = [
+            ("Inter", "Inter-Regular", ["normal", "400"]),
+            ("Inter", "Inter-Bold", ["bold", "700", "800"]),
+            ("Poppins", "Poppins-Regular", ["normal", "400"]),
+            ("Poppins", "Poppins-Bold", ["bold", "700", "800"]),
+            ("Space Grotesk", "SpaceGrotesk-Bold", ["normal", "bold", "400", "700", "800"]),
+            ("SpaceGrotesk", "SpaceGrotesk-Bold", ["normal", "bold", "400", "700", "800"]),
+            ("Rajdhani", "Rajdhani-Regular", ["normal", "400"]),
+            ("Rajdhani", "Rajdhani-Bold", ["bold", "700", "800"]),
+            ("Chakra Petch", "ChakraPetch-Regular", ["normal", "400"]),
+            ("Chakra Petch", "ChakraPetch-Bold", ["bold", "700", "800"]),
+            ("ChakraPetch", "ChakraPetch-Regular", ["normal", "400"]),
+            ("ChakraPetch", "ChakraPetch-Bold", ["bold", "700", "800"]),
+            ("Bebas Neue", "BebasNeue-Regular", ["normal", "bold", "400", "700"]),
+            ("BebasNeue", "BebasNeue-Regular", ["normal", "bold", "400", "700"]),
+        ]
+
+        for family, stem, weights in font_registrations:
+            for fdir in font_dirs:
+                ttf_path = fdir / f"{stem}.ttf"
+                if ttf_path.is_file():
+                    for w in weights:
+                        try:
+                            s_lib.register_font(family, str(ttf_path), weight=w)
+                        except Exception:
+                            pass
+                    rl_name = f"{family}-{stem.split('-')[-1]}" if "-" in stem else family
+                    if rl_name not in pdfmetrics._fonts:
+                        try:
+                            pdfmetrics.registerFont(TTFont(rl_name, str(ttf_path)))
+                        except Exception:
+                            pass
+                    if family not in pdfmetrics._fonts:
+                        try:
+                            pdfmetrics.registerFont(TTFont(family, str(ttf_path)))
+                        except Exception:
+                            pass
+                    break
+    except Exception:
+        pass
+
+
+def _prepare_svg_for_svglib(svg_text: str) -> str:
+    """Preprocess SVG so that embedded SVG data URIs, external SVG/raster references,
+
+    font families, and font weights are normalized for 100% rendering fidelity
+    in ReportLab / svglib without Cairo.
     """
+    _init_reportlab_engine()
+
+    # Clean font-family attributes (strip single/double quotes and fallback lists like 'Inter, sans-serif')
+    def replace_font_family(match: re.Match) -> str:
+        raw_val = match.group(1).replace("'", "").replace('"', '').strip()
+        first_font = raw_val.split(",")[0].strip()
+        first_lower = first_font.lower().replace("-", "").replace(" ", "")
+        for target in ("Inter", "Poppins", "Space Grotesk", "Rajdhani", "Chakra Petch", "Bebas Neue"):
+            if target.lower().replace("-", "").replace(" ", "") == first_lower:
+                return f'font-family="{target}"'
+        return f'font-family="{first_font}"'
+
+    svg_text = re.sub(r'font-family\s*=\s*["\']([^"\']+)["\']', replace_font_family, svg_text)
+
+    # Normalize numeric font-weight to bold / normal for svglib matching
+    def replace_font_weight(match: re.Match) -> str:
+        w_val = match.group(1).strip().lower()
+        if w_val in ("bold", "700", "800", "900", "bolder"):
+            return 'font-weight="bold"'
+        return 'font-weight="normal"'
+
+    svg_text = re.sub(r'font-weight\s*=\s*["\']([^"\']+)["\']', replace_font_weight, svg_text)
+
     image_pattern = re.compile(r'<image\b([^>]*)(?:/>|>(.*?)</image>)', re.DOTALL | re.IGNORECASE)
 
     def replace_image(match: re.Match) -> str:
@@ -195,21 +322,29 @@ def _prepare_svg_for_svglib(svg_text: str) -> str:
 
 
 def svg_to_pdf_bytes(svg_text: str) -> bytes:
-    """Convert SVG text to vector PDF bytes, using CairoSVG with ReportLab fallback."""
+    """Convert SVG text to vector PDF bytes, with full transparency, embedded fonts, and vector fidelity."""
+    _init_reportlab_engine()
+    clean_svg = _prepare_svg_for_svglib(svg_text)
+
+    # Try ReportLab first for deterministic TrueType font embedding and alpha transparency
     try:
-        import cairosvg
-        return cairosvg.svg2pdf(bytestring=svg_text.encode("utf-8"))
-    except Exception:
         from svglib.svglib import svg2rlg
         from reportlab.graphics import renderPDF
 
-        clean_svg = _prepare_svg_for_svglib(svg_text)
         drawing = svg2rlg(io.StringIO(clean_svg))
-        if drawing is None:
-            raise ValueError("Could not parse SVG markup into ReportLab drawing.")
-        buf = io.BytesIO()
-        renderPDF.drawToFile(drawing, buf)
-        return buf.getvalue()
+        if drawing is not None:
+            buf = io.BytesIO()
+            renderPDF.drawToFile(drawing, buf)
+            return buf.getvalue()
+    except Exception:
+        pass
+
+    # Fallback to CairoSVG if available
+    try:
+        import cairosvg
+        return cairosvg.svg2pdf(bytestring=clean_svg.encode("utf-8"))
+    except Exception as e:
+        raise RuntimeError(f"PDF export failed: {e}")
 
 
 def svg_to_pdf(svg_text: str, out_path: Path) -> Path:
@@ -219,5 +354,6 @@ def svg_to_pdf(svg_text: str, out_path: Path) -> Path:
     pdf_bytes = svg_to_pdf_bytes(svg_text)
     out_path.write_bytes(pdf_bytes)
     return out_path
+
 
 

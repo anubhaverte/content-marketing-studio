@@ -93,12 +93,43 @@ def build_svg(spec: DesignSpec, person: Person, debug_guides: bool = False) -> s
             )
         elif isinstance(element, LogoEl):
             try:
-                path = _logo_path(spec, element)
+                uri = None
+                aspect_ratio = 1.0
+                rel_path = spec.brand.logos.get(element.src) if spec.brand and spec.brand.logos else None
+                if rel_path and rel_path.startswith("data:"):
+                    uri = rel_path
+                    try:
+                        if "image/svg+xml" in uri:
+                            parts = uri.split(",", 1)
+                            if len(parts) == 2:
+                                import urllib.parse
+                                raw_svg = base64.b64decode(parts[1]).decode("utf-8", errors="replace") if ";base64" in parts[0] else urllib.parse.unquote(parts[1])
+                                r_el = ElementTree.fromstring(raw_svg)
+                                vb = r_el.get("viewBox") or r_el.get("viewbox")
+                                if vb:
+                                    vbs = [float(v) for v in vb.replace(",", " ").split()]
+                                    if len(vbs) == 4 and vbs[3] > 0:
+                                        aspect_ratio = vbs[2] / vbs[3]
+                        else:
+                            from PIL import Image
+                            import io
+                            parts = uri.split(",", 1)
+                            if len(parts) == 2:
+                                im = Image.open(io.BytesIO(base64.b64decode(parts[1])))
+                                if im.size[1] > 0:
+                                    aspect_ratio = im.size[0] / im.size[1]
+                    except Exception:
+                        aspect_ratio = 1.0
+                else:
+                    path = _logo_path(spec, element)
+                    uri = file_to_data_uri(path)
+                    aspect_ratio = _asset_aspect_ratio(path)
+
                 fragments.append(
                     draw_logo(
                         element,
-                        file_to_data_uri(path),
-                        _asset_aspect_ratio(path),
+                        uri,
+                        aspect_ratio,
                         element_id,
                         element.src,
                     )
@@ -212,6 +243,9 @@ def _logo_path(spec: DesignSpec, element: LogoEl) -> Path:
             "acm_nitsurat": "acm",
             "logo_acm": "acm_nitsurat",
             "logo_svnit": "svnit",
+            "bg_tech_grid": "bg_image",
+            "bg_image": "bg_tech_grid",
+            "bg_custom": "bg_image",
         }.get(element.src)
         if alias:
             relative_path = spec.brand.logos.get(alias)
@@ -220,10 +254,29 @@ def _logo_path(spec: DesignSpec, element: LogoEl) -> Path:
             relative_path = "assets/logos/acm_nitsurat.svg"
         elif element.src in ("svnit", "logo_svnit"):
             relative_path = "assets/logos/svnit.svg"
+        elif element.src in ("bg_image", "bg_tech_grid"):
+            relative_path = "assets/art/bg_tech_grid.svg"
+        elif element.src in ("bg_circuit_lines", "circuit_lines"):
+            relative_path = "assets/art/bg_circuit_lines.svg"
+        elif element.src in ("bg_geometric_mesh", "geometric_mesh"):
+            relative_path = "assets/art/bg_geometric_mesh.svg"
+        elif element.src in ("bg_svnit_watermark", "svnit_watermark"):
+            relative_path = "assets/art/bg_svnit_watermark.svg"
     if relative_path is None:
         raise ValueError(f"Logo {element.src!r} is not configured in the brand kit")
-    path = asset_path(relative_path)
+
+    clean_p = relative_path.lstrip("/")
+    for prefix in ("frontend/public/art/", "frontend/public/logos/", "frontend/public/", "art/", "logos/"):
+        if clean_p.startswith(prefix):
+            clean_p = ("assets/art/" if "art" in prefix else "assets/logos/" if "logos" in prefix else "assets/") + clean_p[len(prefix):]
+            break
+
+    path = asset_path(clean_p)
     if not path.is_file():
+        from app.config import ROOT
+        cand = ROOT / clean_p
+        if cand.is_file():
+            return cand
         raise FileNotFoundError(f"Configured logo file does not exist: {relative_path}")
     return path
 
