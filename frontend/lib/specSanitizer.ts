@@ -15,6 +15,7 @@ const KNOWN_PRESET_FILES: Record<string, string> = {
   logo_acm: "assets/logos/acm_nitsurat.svg",
   logo_svnit: "assets/logos/svnit.svg",
   acm_nitsurat: "assets/logos/acm_nitsurat.svg",
+  acm: "assets/logos/acm_nitsurat.svg",
   svnit: "assets/logos/svnit.svg",
 };
 
@@ -160,6 +161,9 @@ export function sanitizeSpecForBackend(rawSpec: DesignSpec): DesignSpec {
   const brandLogos: Record<string, string> = {
     svnit: "assets/logos/svnit.svg",
     acm_nitsurat: "assets/logos/acm_nitsurat.svg",
+    acm: "assets/logos/acm_nitsurat.svg",
+    logo_acm: "assets/logos/acm_nitsurat.svg",
+    logo_svnit: "assets/logos/svnit.svg",
     ...(cloned.brand?.logos || {}),
   };
 

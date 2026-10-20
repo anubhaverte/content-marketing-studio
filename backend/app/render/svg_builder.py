@@ -41,8 +41,15 @@ from app.spec.schema import (
 def build_svg(spec: DesignSpec, person: Person, debug_guides: bool = False) -> str:
     """Draw layout elements from back to front and return a self-contained SVG."""
     used_logos = {element.src for element in spec.elements if isinstance(element, LogoEl)}
+    normalized_used = set()
+    for l in used_logos:
+        if l in ("acm", "acm_nitsurat", "logo_acm"):
+            normalized_used.add("acm_nitsurat")
+        if l in ("svnit", "logo_svnit"):
+            normalized_used.add("svnit")
+        normalized_used.add(l)
     required_logos = {"acm_nitsurat", "svnit"}
-    missing_logos = required_logos - used_logos
+    missing_logos = required_logos - normalized_used
     if missing_logos:
         raise ValueError(f"Layout is missing required logos: {', '.join(sorted(missing_logos))}")
 
@@ -198,7 +205,21 @@ def _debug_guides(
 
 
 def _logo_path(spec: DesignSpec, element: LogoEl) -> Path:
-    relative_path = spec.brand.logos.get(element.src)
+    relative_path = spec.brand.logos.get(element.src) if spec.brand and spec.brand.logos else None
+    if relative_path is None and spec.brand and spec.brand.logos:
+        alias = {
+            "acm": "acm_nitsurat",
+            "acm_nitsurat": "acm",
+            "logo_acm": "acm_nitsurat",
+            "logo_svnit": "svnit",
+        }.get(element.src)
+        if alias:
+            relative_path = spec.brand.logos.get(alias)
+    if relative_path is None:
+        if element.src in ("acm", "acm_nitsurat", "logo_acm"):
+            relative_path = "assets/logos/acm_nitsurat.svg"
+        elif element.src in ("svnit", "logo_svnit"):
+            relative_path = "assets/logos/svnit.svg"
     if relative_path is None:
         raise ValueError(f"Logo {element.src!r} is not configured in the brand kit")
     path = asset_path(relative_path)
